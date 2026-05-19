@@ -9,7 +9,7 @@ export async function dispatchRpc(
   handlers: Record<string, Record<string, (...args: unknown[]) => unknown>>,
   rpcPrefix: string,
 ): Promise<Response | null> {
-  const url = new URL(req.url)
+  const url = new URL(req.url, 'http://localhost')
 
   if (!url.pathname.startsWith(rpcPrefix + '/')) return null
   if (req.method !== 'POST') return null

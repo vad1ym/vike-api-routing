@@ -82,35 +82,33 @@ export function generateHandlersModule(handlers: HandlerEntry[], rpcPrefix: stri
 export function generateHandlersClientModule(handlers: HandlerEntry[], rpcPrefix: string): string {
   const lines: string[] = []
 
-  lines.push(`const rpcPrefix = ${JSON.stringify(rpcPrefix)}`)
+  lines.push(`const _prefix = ${JSON.stringify(rpcPrefix)}`)
   lines.push('')
-  lines.push('function makeProxy(handlerName) {')
-  lines.push('  return new Proxy({}, {')
-  lines.push('    get(_, fnName) {')
-  lines.push('      return async (...args) => {')
-  lines.push('        const res = await fetch(`${rpcPrefix}/${handlerName}/${String(fnName)}`, {')
-  lines.push('          method: "POST",')
-  lines.push('          headers: { "Content-Type": "application/json" },')
-  lines.push('          body: JSON.stringify(args),')
-  lines.push('        })')
-  lines.push('        if (!res.ok) {')
-  lines.push('          const err = await res.json().catch(() => ({ message: res.statusText }))')
-  lines.push('          throw new Error(err.message ?? res.statusText)')
-  lines.push('        }')
-  lines.push('        return res.json()')
-  lines.push('      }')
+  lines.push('function _rpc(handlerName, fnName) {')
+  lines.push('  return async (...args) => {')
+  lines.push('    const res = await fetch(`${_prefix}/${handlerName}/${fnName}`, {')
+  lines.push('      method: "POST",')
+  lines.push('      headers: { "Content-Type": "application/json" },')
+  lines.push('      body: JSON.stringify(args),')
+  lines.push('    })')
+  lines.push('    if (!res.ok) {')
+  lines.push('      const err = await res.json().catch(() => ({ message: res.statusText }))')
+  lines.push('      throw new Error(err.message ?? res.statusText)')
   lines.push('    }')
-  lines.push('  })')
-  lines.push('}')
-  lines.push('')
-  lines.push('export const handlers = {')
-
-  handlers.forEach((handler) => {
-    lines.push(`  ${JSON.stringify(handler.name)}: makeProxy(${JSON.stringify(handler.name)}),`)
-  })
-
+  lines.push('    return res.json()')
+  lines.push('  }')
   lines.push('}')
   lines.push('')
 
+  // Named exports for every exported function in every handler module.
+  // Functions are typed via TypeScript import — the build-time import is only for types.
+  for (const handler of handlers) {
+    lines.push(`// ${handler.name}`)
+    lines.push(`export const ${handler.name} = new Proxy({}, {`)
+    lines.push(`  get(_, fnName) { return typeof fnName === 'string' ? _rpc(${JSON.stringify(handler.name)}, fnName) : undefined },`)
+    lines.push(`})`)
+  }
+
+  lines.push('')
   return lines.join('\n')
 }

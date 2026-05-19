@@ -43,7 +43,6 @@ export function vikeApiRouter(options: VikeApiRouterOptions = {}): Plugin {
 
   return {
     name: 'vike-api-router',
-
     configResolved(config) {
       rootDir = config.root
       serverDir = path.resolve(rootDir, options.serverDir ?? 'server')
@@ -76,6 +75,39 @@ export function vikeApiRouter(options: VikeApiRouterOptions = {}): Plugin {
         if (!file.startsWith(watchDir)) return
         invalidateVirtualModules(server)
       })
+
+      // In dev, Vite handles requests directly (no +server.ts).
+      // Register our middleware on the Vite dev server so API routes work.
+      return () => {
+        server.middlewares.use(async (req, res, next) => {
+          try {
+            const { createRouter } = await import('../middleware/routeAdapter.js')
+            const { dispatchRpc } = await import('../middleware/rpcAdapter.js')
+
+            // Dynamically import route handlers
+            const { routes } = await server.ssrLoadModule(ROUTES_MODULE_ID) as { routes: any[] }
+            const { handlers, rpcPrefix: prefix } = await server.ssrLoadModule(HANDLERS_MODULE_ID) as { handlers: any; rpcPrefix: string }
+
+            const url = `http://localhost${req.url ?? '/'}`
+            const body = await readBody(req)
+            const request = new Request(url, {
+              method: req.method ?? 'GET',
+              headers: req.headers as HeadersInit,
+              body: body.length > 0 ? new Uint8Array(body) : undefined,
+            })
+
+            const rpcRes = await dispatchRpc(request, handlers, prefix)
+            if (rpcRes) return sendResponse(rpcRes, res)
+
+            const router = createRouter(routes)
+            const routeRes = await router.dispatch(request)
+            if (routeRes) return sendResponse(routeRes, res)
+          } catch (e) {
+            console.error('[vike-api-router]', e)
+          }
+          next()
+        })
+      }
     },
 
     handleHotUpdate({ file, server }) {
@@ -85,6 +117,22 @@ export function vikeApiRouter(options: VikeApiRouterOptions = {}): Plugin {
       invalidateVirtualModules(server)
     },
   }
+}
+
+function readBody(req: import('node:http').IncomingMessage): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = []
+    req.on('data', (chunk: Buffer) => chunks.push(chunk))
+    req.on('end', () => resolve(Buffer.concat(chunks)))
+    req.on('error', reject)
+  })
+}
+
+async function sendResponse(response: Response, res: import('node:http').ServerResponse): Promise<void> {
+  res.statusCode = response.status
+  response.headers.forEach((value, key) => res.setHeader(key, value))
+  const body = await response.arrayBuffer()
+  res.end(Buffer.from(body))
 }
 
 function invalidateVirtualModules(server: import('vite').ViteDevServer): void {

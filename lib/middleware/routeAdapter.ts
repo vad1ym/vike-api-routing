@@ -68,7 +68,7 @@ function matchRoute(routePath: string, urlPath: string): boolean {
  */
 export function buildRouteHandler(entry: RouteManifestEntry): (req: Request) => Promise<Response> {
   return async (req: Request): Promise<Response> => {
-    const url = new URL(req.url)
+    const url = new URL(req.url, 'http://localhost')
     const params = extractParams(entry.path, url.pathname)
 
     const ctx: ApiContext = {
@@ -108,8 +108,8 @@ export function createRouter(routes: RouteManifestEntry[]) {
 
   return {
     async dispatch(req: Request): Promise<Response | null> {
-      const url = new URL(req.url)
-      const method = req.method.toUpperCase()
+      const url = new URL(req.url, 'http://localhost')
+      const method = (req.method ?? 'GET').toUpperCase()
 
       for (const { entry, handle } of handlers) {
         if (!matchRoute(entry.path, url.pathname)) continue

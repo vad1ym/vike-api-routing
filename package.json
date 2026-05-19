@@ -26,6 +26,14 @@
     "./client": {
       "types": "./lib/client.ts",
       "default": "./dist/client.js"
+    },
+    "./config": {
+      "types": "./lib/config.ts",
+      "default": "./dist/config.js"
+    },
+    "./handlers": {
+      "types": "./lib/handlers.ts",
+      "default": "./dist/handlers.js"
     }
   },
   "files": [
@@ -49,7 +57,7 @@
     "tsup": "^8.5.1",
     "typescript": "^6.0.0",
     "vike": "^0.4.259",
-    "vite": "^6.0.0",
+    "vite": "^8.0.13",
     "vitest": "^4.1.6"
   },
   "peerDependencies": {

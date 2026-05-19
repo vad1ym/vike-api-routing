@@ -115,9 +115,21 @@ export async function createUser(data: { name: string }) {
 
 ```ts
 // Client (any page or component)
-import { handlers } from 'vike-api-router/client'
+import { userHandler } from 'vike-api-router/handlers'
 
-const user = await handlers.userHandler.getUser('123')
+const user = await userHandler.getUser('123')
+const users = await userHandler.listUsers()
+```
+
+To get TypeScript types for handler functions, add a declaration file to your project root:
+
+```ts
+// handlers.d.ts
+import type * as _userHandler from './server/handlers/userHandler'
+
+declare module 'vike-api-router/handlers' {
+  export const userHandler: typeof _userHandler
+}
 ```
 
 ---
@@ -204,6 +216,7 @@ export default { fetch: toWebHandler(app) }
 | Wildcard segments `@...rest` | ✅ |
 | `server/routes/` (no prefix) | ✅ |
 | RPC handlers (`server/handlers/`) | ✅ |
+| Client import (`vike-api-router/handlers`) | ✅ |
 | HMR (hot reload on file add/remove) | ✅ |
 | TypeScript | ✅ |
 | Hono | ✅ |
