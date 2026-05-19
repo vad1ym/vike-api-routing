@@ -63,10 +63,8 @@ function scanRoutesDir(serverDir: string, subDir: string, prefix: string): Route
     const method = fileNameToMethod(basename)
     const routePath = filePathToRoutePath(relative, prefix)
     const relativeDir = path.dirname(relative)
-    const middlewares = collectMiddlewareFiles(
-      path.join(serverDir, subDir),
-      relativeDir === '.' ? subDir : `${subDir}/${relativeDir}`,
-    )
+    const middlewareSubDir = relativeDir === '.' ? subDir : `${subDir}/${relativeDir}`
+    const middlewares = collectMiddlewareFiles(serverDir, middlewareSubDir)
 
     routes.push({ method, path: routePath, moduleId: filePath, middlewares })
   })
