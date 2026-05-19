@@ -15,6 +15,10 @@ describe('segmentToHono', () => {
     expect(segmentToHono('users')).toBe('users')
     expect(segmentToHono('robots.txt')).toBe('robots.txt')
   })
+
+  it('drops route group segments from the URL path', () => {
+    expect(segmentToHono('(auth)')).toBe('')
+  })
 })
 
 describe('filePathToRoutePath', () => {
@@ -40,6 +44,14 @@ describe('filePathToRoutePath', () => {
 
   it('deeply nested route', () => {
     expect(filePathToRoutePath('users/@id/posts/@postId/+get.ts', '/api')).toBe('/api/users/:id/posts/:postId')
+  })
+
+  it('ignores route groups when building API routes', () => {
+    expect(filePathToRoutePath('(auth)/sign-in/+post.ts', '/api')).toBe('/api/sign-in')
+  })
+
+  it('ignores route groups when building custom routes', () => {
+    expect(filePathToRoutePath('(meta)/robots.txt/+get.ts', '')).toBe('/robots.txt')
   })
 })
 

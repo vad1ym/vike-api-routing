@@ -1,3 +1,4 @@
+import { enhance } from '@universal-middleware/core'
 import { createRouter, type RouteManifestEntry } from './routeAdapter.js'
 import { dispatchRpc } from './rpcAdapter.js'
 import type { MiddlewareFn, RouteHandler } from '../types.js'
@@ -32,13 +33,13 @@ async function ensureInitialized() {
  * Signature: (request, context, runtime) => Response | void
  * Returns Response if the request is handled, void to pass through.
  */
-async function handle(request: Request): Promise<Response | void> {
+async function handle(request: Request, _context: unknown, _runtime: unknown): Promise<Response | void> {
   await ensureInitialized()
 
   const rpcResponse = await dispatchRpc(request, rpcHandlers!, rpcPrefix)
   if (rpcResponse) return rpcResponse
 
-  return router!.dispatch(request) ?? undefined
+  return router!.dispatch(request)
 }
 
 /**
@@ -54,4 +55,4 @@ async function handle(request: Request): Promise<Response | void> {
  * vike(app, [vikeApiRouterMiddleware])
  * ```
  */
-export const vikeApiRouterMiddleware = () => handle
+export const vikeApiRouterMiddleware = enhance(handle, {})

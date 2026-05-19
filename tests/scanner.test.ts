@@ -34,7 +34,10 @@ describe('scanServerDir', () => {
       'api/users/@id/+get.ts': 'export default () => ({})',
       'api/users/@id/+delete.ts': 'export default () => null',
       'api/health/+all.ts': 'export default () => ({})',
+      'api/(auth)/+middleware.ts': 'export default async (req, next) => next()',
+      'api/(auth)/sign-in/+post.ts': 'export default () => ({ ok: true })',
       'routes/robots.txt/+get.ts': 'export default () => new Response("")',
+      'routes/(meta)/sitemap.xml/+get.ts': 'export default () => new Response("")',
       'handlers/userHandler.ts': 'export async function getUser(id) { return {} }',
     })
   })
@@ -49,12 +52,14 @@ describe('scanServerDir', () => {
     expect(paths).toContain('GET /api/users/:id')
     expect(paths).toContain('DELETE /api/users/:id')
     expect(paths).toContain('ALL /api/health')
+    expect(paths).toContain('POST /api/sign-in')
   })
 
   it('scans routes/ without prefix', () => {
     const manifest = scanServerDir(tmpDir, '/api')
     const paths = manifest.customRoutes.map(r => r.path)
     expect(paths).toContain('/robots.txt')
+    expect(paths).toContain('/sitemap.xml')
   })
 
   it('scans handlers/ as RPC entries', () => {
@@ -85,6 +90,14 @@ describe('scanServerDir', () => {
     expect(health).toBeDefined()
     // api/+middleware.ts exists, so health should have 1 middleware
     expect(health!.middlewares).toHaveLength(1)
+  })
+
+  it('keeps route-group middleware in the chain while omitting the group from the URL', () => {
+    const manifest = scanServerDir(tmpDir, '/api')
+    const signIn = manifest.apiRoutes.find(r => r.path === '/api/sign-in' && r.method === 'POST')
+    expect(signIn).toBeDefined()
+    expect(signIn!.middlewares).toHaveLength(2)
+    expect(signIn!.middlewares.some(m => m.includes('api/(auth)/+middleware.ts'))).toBe(true)
   })
 
   it('sorts routes: static before dynamic before wildcard', () => {

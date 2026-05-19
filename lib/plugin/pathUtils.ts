@@ -2,11 +2,16 @@ import path from 'node:path'
 
 const METHOD_FILES = new Set(['get', 'post', 'put', 'patch', 'delete', 'head', 'options', 'all'])
 
+function isRouteGroupSegment(segment: string): boolean {
+  return /^\([^/]+\)$/.test(segment)
+}
+
 /**
  * Convert a filesystem segment like `@id` or `@...rest` to a Hono route param.
  * Regular segments are returned as-is.
  */
 export function segmentToHono(segment: string): string {
+  if (isRouteGroupSegment(segment)) return ''
   if (segment.startsWith('@...')) return '*'
   if (segment.startsWith('@')) return `:${segment.slice(1)}`
   return segment
@@ -29,7 +34,7 @@ export function filePathToRoutePath(relativePath: string, prefix: string): strin
 
   // Split into segments and convert each
   const segments = dir.split('/').filter(Boolean)
-  const converted = segments.map(segmentToHono)
+  const converted = segments.map(segmentToHono).filter(Boolean)
 
   const routePath = '/' + converted.join('/')
 

@@ -156,7 +156,7 @@ describe('createRouter', () => {
     ])
 
     const res = await router.dispatch(makeRequest('/api/other'))
-    expect(res).toBeNull()
+    expect(res).toBeUndefined()
   })
 
   it('matches by method — ignores wrong method', async () => {
@@ -170,7 +170,7 @@ describe('createRouter', () => {
     ])
 
     const res = await router.dispatch(makeRequest('/api/users', 'POST'))
-    expect(res).toBeNull()
+    expect(res).toBeUndefined()
   })
 
   it('ALL method matches any HTTP verb', async () => {

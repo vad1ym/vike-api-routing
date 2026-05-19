@@ -107,7 +107,7 @@ export function createRouter(routes: RouteManifestEntry[]) {
   }))
 
   return {
-    async dispatch(req: Request): Promise<Response | null> {
+    async dispatch(req: Request): Promise<Response | undefined> {
       const url = new URL(req.url, 'http://localhost')
       const method = (req.method ?? 'GET').toUpperCase()
 
@@ -117,7 +117,7 @@ export function createRouter(routes: RouteManifestEntry[]) {
         return handle(req)
       }
 
-      return null
+      return undefined
     },
   }
 }

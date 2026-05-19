@@ -29,11 +29,13 @@ server/
 | `server/api/users/@id/+get.ts` | `GET /api/users/:id` |
 | `server/api/users/@id/+delete.ts` | `DELETE /api/users/:id` |
 | `server/api/files/@...rest/+get.ts` | `GET /api/files/*` |
+| `server/api/(auth)/sign-in/+post.ts` | `POST /api/sign-in` |
 | `server/routes/robots.txt/+get.ts` | `GET /robots.txt` |
 
 **Segment conventions:**
 - `@id` → `:id` (dynamic param)
 - `@...rest` → `*` (wildcard)
+- `(group)` → ignored in the URL path, useful for organization
 - Regular folder names → literal path segments
 
 ---
