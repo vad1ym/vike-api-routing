@@ -1,0 +1,62 @@
+{
+  "name": "vike-api-router",
+  "version": "0.1.0",
+  "description": "File-based API routing for Vike — supports Hono, h3, and more",
+  "type": "module",
+  "license": "MIT",
+  "keywords": [
+    "vike",
+    "api",
+    "router",
+    "file-based",
+    "hono",
+    "h3",
+    "vite",
+    "ssr"
+  ],
+  "exports": {
+    ".": {
+      "types": "./lib/index.ts",
+      "default": "./dist/index.js"
+    },
+    "./plugin": {
+      "types": "./lib/plugin/index.ts",
+      "default": "./dist/plugin.js"
+    },
+    "./client": {
+      "types": "./lib/client.ts",
+      "default": "./dist/client.js"
+    }
+  },
+  "files": [
+    "lib",
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "changelog": "changelogen",
+    "release": "changelogen --release",
+    "example:hono": "pnpm run build && pnpm --filter example-vike-api-router-hono dev",
+    "example:hono:build": "pnpm run build && pnpm --filter example-vike-api-router-hono build"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@universal-middleware/core": "^0.4.17",
+    "changelogen": "^0.6.2",
+    "tsup": "^8.5.1",
+    "typescript": "^6.0.0",
+    "vike": "^0.4.259",
+    "vite": "^6.0.0"
+  },
+  "peerDependencies": {
+    "vike": ">=0.4.259",
+    "vite": ">=5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "vike": {
+      "optional": true
+    }
+  },
+  "packageManager": "pnpm@10.11.0"
+}

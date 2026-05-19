@@ -1,0 +1,98 @@
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileNameToMethod, filePathToRoutePath, getMiddlewareChainPaths, sortRoutesBySpecificity } from './pathUtils.js'
+
+export interface RouteEntry {
+  /** HTTP method: GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS, ALL */
+  method: string
+  /** Hono-compatible route path, e.g. /api/users/:id */
+  path: string
+  /** Absolute path to the route module file */
+  moduleId: string
+  /** Ordered list of absolute paths to +middleware.ts files (root → leaf) */
+  middlewares: string[]
+}
+
+export interface HandlerEntry {
+  /** Handler name derived from filename, e.g. userHandler */
+  name: string
+  /** Absolute path to the handler module file */
+  moduleId: string
+}
+
+export interface RouteManifest {
+  apiRoutes: RouteEntry[]
+  customRoutes: RouteEntry[]
+  handlers: HandlerEntry[]
+}
+
+const SKIPPED_DIRS = new Set(['.git', '.vite', 'dist', 'node_modules'])
+const METHOD_FILE_RE = /^\+(?:get|post|put|patch|delete|head|options|all)\.ts$/
+const MIDDLEWARE_FILE = '+middleware.ts'
+
+function walkDir(dir: string, callback: (filePath: string) => void): void {
+  if (!fs.existsSync(dir)) return
+
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (entry.isDirectory()) {
+      if (SKIPPED_DIRS.has(entry.name)) continue
+      walkDir(path.join(dir, entry.name), callback)
+    } else if (entry.isFile()) {
+      callback(path.join(dir, entry.name))
+    }
+  }
+}
+
+function collectMiddlewareFiles(serverDir: string, subDir: string): string[] {
+  const chainPaths = getMiddlewareChainPaths(subDir)
+  return chainPaths
+    .map(rel => path.join(serverDir, rel))
+    .filter(abs => fs.existsSync(abs))
+}
+
+function scanRoutesDir(serverDir: string, subDir: string, prefix: string): RouteEntry[] {
+  const dir = path.join(serverDir, subDir)
+  const routes: RouteEntry[] = []
+
+  walkDir(dir, (filePath) => {
+    const relative = path.relative(dir, filePath)
+    const basename = path.basename(filePath)
+
+    if (!METHOD_FILE_RE.test(basename)) return
+
+    const method = fileNameToMethod(basename)
+    const routePath = filePathToRoutePath(relative, prefix)
+    const relativeDir = path.dirname(relative)
+    const middlewares = collectMiddlewareFiles(
+      path.join(serverDir, subDir),
+      relativeDir === '.' ? subDir : `${subDir}/${relativeDir}`,
+    )
+
+    routes.push({ method, path: routePath, moduleId: filePath, middlewares })
+  })
+
+  return sortRoutesBySpecificity(routes)
+}
+
+function scanHandlersDir(serverDir: string): HandlerEntry[] {
+  const dir = path.join(serverDir, 'handlers')
+  const handlers: HandlerEntry[] = []
+
+  if (!fs.existsSync(dir)) return handlers
+
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (!entry.isFile() || !entry.name.endsWith('.ts')) continue
+    const name = path.basename(entry.name, '.ts')
+    handlers.push({ name, moduleId: path.join(dir, entry.name) })
+  }
+
+  return handlers
+}
+
+export function scanServerDir(serverDir: string, apiPrefix: string): RouteManifest {
+  const apiRoutes = scanRoutesDir(serverDir, 'api', apiPrefix)
+  const customRoutes = scanRoutesDir(serverDir, 'routes', '')
+  const handlers = scanHandlersDir(serverDir)
+
+  return { apiRoutes, customRoutes, handlers }
+}
