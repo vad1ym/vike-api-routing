@@ -1,6 +1,6 @@
 {
   "name": "vike-api-router",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "File-based API routing for Vike — supports Hono, h3, and more",
   "type": "module",
   "license": "MIT",
