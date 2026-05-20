@@ -123,19 +123,22 @@ export function generateHandlersClientModule(handlers: HandlerEntry[], rpcPrefix
  * that would break in SSR worker threads.
  */
 export function generateMiddlewareModule(): string {
-  return `
-import { enhance } from '@universal-middleware/core'
-import { routes } from 'virtual:vike-api-router/routes'
-import { handlers, rpcPrefix } from 'virtual:vike-api-router/handlers'
-import { createRouter } from 'vike-api-router/internal/routeAdapter'
-import { dispatchRpc } from 'vike-api-router/internal/rpcAdapter'
-
-async function handle(request, _context, _runtime) {
-  const rpcResponse = await dispatchRpc(request, handlers, rpcPrefix)
-  if (rpcResponse) return rpcResponse
-  return createRouter(routes).dispatch(request)
-}
-
-export const vikeApiRouterMiddleware = enhance(handle, {})
-`.trimStart()
+  // String is built dynamically to prevent tsup from treating these as real imports
+  const v = 'virtual:vike-api-router'
+  const lines = [
+    `import { enhance } from '@universal-middleware/core'`,
+    `import { routes } from '${v}/routes'`,
+    `import { handlers, rpcPrefix } from '${v}/handlers'`,
+    `import { createRouter } from 'vike-api-router/internal/routeAdapter'`,
+    `import { dispatchRpc } from 'vike-api-router/internal/rpcAdapter'`,
+    ``,
+    `async function handle(request, _context, _runtime) {`,
+    `  const rpcResponse = await dispatchRpc(request, handlers, rpcPrefix)`,
+    `  if (rpcResponse) return rpcResponse`,
+    `  return createRouter(routes).dispatch(request)`,
+    `}`,
+    ``,
+    `export const vikeApiRouterMiddleware = enhance(handle, {})`,
+  ]
+  return lines.join('\n') + '\n'
 }
