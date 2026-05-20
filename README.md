@@ -1,7 +1,7 @@
 # vike-api-router
 
-> ⚠️ **Work in Progress / Proof of Concept**
-> This library is in early experimental stage. APIs may change at any time. Not recommended for production use.
+> [!WARNING]
+> This library is already usable in real projects, but it is still not battle-tested across a wide range of production setups. Use it deliberately and validate the behavior against your server framework, middleware chain, and deployment environment.
 
 File-based API routing for [Vike](https://vike.dev). Define your server endpoints by creating files — no manual route registration needed.
 
