@@ -140,6 +140,39 @@ TypeScript types are automatically generated into `handlers.d.ts` at your projec
 
 ---
 
+## Route as Handler — `defineRoute`
+
+Use `defineRoute` to declare a route that is also callable as a handler from client code.
+
+```ts
+// server/api/users/@id/+put.ts
+import { defineRoute } from 'vike-api-router'
+import type { ApiContext } from 'vike-api-router'
+
+export const updateUser = defineRoute({
+  async handler({ params, req }: ApiContext<{ id: string }>) {
+    const body = await req.json()
+    return db.users.update(params.id, body)
+  },
+})
+```
+
+```ts
+// Client or +data.ts — same import, works in SSR and browser
+import { updateUser } from 'vike-api-router/handlers'
+
+await updateUser({ params: { id: '42' }, body: { name: 'Alice' } })
+```
+
+- **SSR** — calls the handler function directly, no HTTP round-trip
+- **Browser** — makes a real `PUT /api/users/42` request
+
+The named export (`updateUser`) is the handler name. Only one named `defineRoute` export is allowed per route file — a second one throws an error at scan time.
+
+TypeScript types for `updateUser` are auto-generated into `handlers.d.ts` alongside regular handler types.
+
+---
+
 ## Proxy
 
 Import from `vike-api-router/proxy`.

@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { dispatchRpc } from '../lib/middleware/rpcAdapter.js'
+import { defineRoute } from '../lib/define.js'
 
 const handlers = {
   userHandler: {
@@ -87,5 +88,57 @@ describe('dispatchRpc', () => {
     const res = await dispatchRpc(req, handlers, '/rpc')
     expect(res).not.toBeNull()
     expect(res!.status).toBe(200)
+  })
+})
+
+describe('dispatchRpc — defineRoute as handler', () => {
+  it('calls defineRoute handler with ApiContext built from args[0]', async () => {
+    const updateUser = defineRoute({
+      handler: async (ctx) => ({ id: ctx.params.id, updated: true }),
+    })
+    const rpcHandlers = { updateUser } as any
+
+    const req = makeRequest('/_rpc/updateUser/updateUser', [{ params: { id: '42' } }])
+    const res = await dispatchRpc(req, rpcHandlers, RPC)
+    expect(res!.status).toBe(200)
+    expect(await res!.json()).toEqual({ id: '42', updated: true })
+  })
+
+  it('runs defineRoute middlewares during RPC call', async () => {
+    const log: string[] = []
+    const mw = vi.fn(async (_req: Request, next: () => Promise<Response>) => {
+      log.push('before')
+      const res = await next()
+      log.push('after')
+      return res
+    })
+
+    const greet = defineRoute({
+      handler: async () => ({ hello: 'world' }),
+      middlewares: [mw],
+    })
+    const rpcHandlers = { greet } as any
+
+    const req = makeRequest('/_rpc/greet/greet', [{}])
+    const res = await dispatchRpc(req, rpcHandlers, RPC)
+    expect(res!.status).toBe(200)
+    expect(await res!.json()).toEqual({ hello: 'world' })
+    expect(log).toEqual(['before', 'after'])
+  })
+
+  it('middleware can short-circuit and return error response', async () => {
+    const authMw = async (_req: Request, _next: () => Promise<Response>) =>
+      new Response(JSON.stringify({ message: 'Unauthorized' }), { status: 401 })
+
+    const secret = defineRoute({
+      handler: async () => ({ secret: 'data' }),
+      middlewares: [authMw],
+    })
+    const rpcHandlers = { secret } as any
+
+    const req = makeRequest('/_rpc/secret/secret', [{}])
+    const res = await dispatchRpc(req, rpcHandlers, RPC)
+    expect(res!.status).toBe(401)
+    expect(await res!.json()).toEqual({ message: 'Unauthorized' })
   })
 })

@@ -11,6 +11,11 @@ export interface RouteEntry {
   moduleId: string
   /** Ordered list of absolute paths to +middleware.ts files (root → leaf) */
   middlewares: string[]
+  /**
+   * If the route file exports a named defineRoute() const, this is the export name.
+   * The route is also registered as an RPC handler under this name.
+   */
+  namedExport?: string
 }
 
 export interface HandlerEntry {
@@ -29,6 +34,18 @@ export interface RouteManifest {
 const SKIPPED_DIRS = new Set(['.git', '.vite', 'dist', 'node_modules'])
 const METHOD_FILE_RE = /^\+(?:get|post|put|patch|delete|head|options|all)\.ts$/
 const MIDDLEWARE_FILE = '+middleware.ts'
+
+function extractNamedRouteExport(filePath: string): string | undefined {
+  const src = fs.readFileSync(filePath, 'utf-8')
+  const matches = [...src.matchAll(/export\s+const\s+(\w+)\s*=/g)]
+  if (matches.length === 0) return undefined
+  if (matches.length > 1) {
+    throw new Error(
+      `[vike-api-router] ${filePath}: only one named defineRoute export is allowed per route file, found: ${matches.map(m => m[1]).join(', ')}`,
+    )
+  }
+  return matches[0][1]
+}
 
 function walkDir(dir: string, callback: (filePath: string) => void): void {
   if (!fs.existsSync(dir)) return
@@ -66,7 +83,8 @@ function scanRoutesDir(serverDir: string, subDir: string, prefix: string): Route
     const middlewareSubDir = relativeDir === '.' ? subDir : `${subDir}/${relativeDir}`
     const middlewares = collectMiddlewareFiles(serverDir, middlewareSubDir)
 
-    routes.push({ method, path: routePath, moduleId: filePath, middlewares })
+    const namedExport = extractNamedRouteExport(filePath)
+    routes.push({ method, path: routePath, moduleId: filePath, middlewares, namedExport })
   })
 
   return sortRoutesBySpecificity(routes)

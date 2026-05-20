@@ -40,16 +40,18 @@ export function vikeApiRouter(options: VikeApiRouterOptions = {}): Plugin {
 
   function writeHandlersDts() {
     const manifest = scanServerDir(getServerDir(), apiPrefix)
+    const allRoutes = [...manifest.apiRoutes, ...manifest.customRoutes]
     const dtsPath = path.resolve(rootDir, 'handlers.d.ts')
-    fs.writeFileSync(dtsPath, generateHandlersDts(manifest.handlers), 'utf-8')
+    fs.writeFileSync(dtsPath, generateHandlersDts(manifest.handlers, allRoutes), 'utf-8')
   }
 
   function generateRoutes() {
     const manifest = scanServerDir(getServerDir(), apiPrefix)
+    const allRoutes = [...manifest.apiRoutes, ...manifest.customRoutes]
     return {
       routesCode: generateRoutesModule(manifest.apiRoutes, manifest.customRoutes),
-      handlersCode: generateHandlersModule(manifest.handlers, rpcPrefix),
-      handlersClientCode: generateHandlersClientModule(manifest.handlers, rpcPrefix),
+      handlersCode: generateHandlersModule(manifest.handlers, rpcPrefix, allRoutes),
+      handlersClientCode: generateHandlersClientModule(manifest.handlers, rpcPrefix, allRoutes),
     }
   }
 
