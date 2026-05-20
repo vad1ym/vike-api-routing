@@ -56,7 +56,7 @@ export class ProxyError extends Error {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const DEFAULT_FORWARD_HEADERS = ['accept', 'accept-language', 'content-type', 'user-agent']
-const DEFAULT_STRIP_HEADERS = ['host', 'connection', 'content-length']
+const DEFAULT_STRIP_HEADERS = ['host', 'connection', 'content-length', 'accept-encoding']
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

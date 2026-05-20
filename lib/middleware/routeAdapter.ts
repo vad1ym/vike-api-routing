@@ -52,8 +52,9 @@ function matchRoute(routePath: string, urlPath: string): boolean {
   const urlSegments = urlPath.split('/').filter(Boolean)
 
   if (routeSegments[routeSegments.length - 1] === '*') {
-    // Wildcard: url must have at least as many segments as before the *
-    return urlSegments.length >= routeSegments.length - 1
+    const prefixSegments = routeSegments.slice(0, -1)
+    if (urlSegments.length < prefixSegments.length) return false
+    return prefixSegments.every((seg, i) => seg.startsWith(':') || seg === urlSegments[i])
   }
 
   if (routeSegments.length !== urlSegments.length) return false
