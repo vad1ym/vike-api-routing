@@ -9,9 +9,11 @@ describe('generateHandlersDts', () => {
     expect(result).not.toContain('export')
   })
 
-  it('re-exports default from handler index', () => {
-    const handler: HandlerEntry = { moduleId: '/project/server/handlers/index.ts' }
+  it('generates typed named exports for each handler name', () => {
+    const handler: HandlerEntry = { moduleId: '/project/server/handlers/index.ts', names: ['oladoctor', 'github'] }
     const result = generateHandlersDts(handler)
-    expect(result).toContain(`export { default } from "/project/server/handlers/index.ts"`)
+    expect(result).toContain(`export const oladoctor`)
+    expect(result).toContain(`export const github`)
+    expect(result).toContain(`/project/server/handlers/index.ts`)
   })
 })

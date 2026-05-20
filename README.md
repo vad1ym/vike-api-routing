@@ -105,26 +105,31 @@ Middleware chain for `GET /api/users/1`:
 Create `server/handlers/index.ts` and export a default object mapping handler names to objects with async methods. Under the hood each method becomes a `POST /_rpc/<name>/<fn>` endpoint — no separate endpoint URL needed in your code.
 
 ```ts
-// server/handlers/index.ts
-import { db } from '../db'
-
-export default {
-  userHandler: {
-    async getUser(id: string) {
-      return db.users.find(id)
-    },
-    async createUser(data: { name: string }) {
-      return db.users.create(data)
-    },
+// server/handlers/userHandler.ts
+export const userHandler = {
+  async getUser(id: string) {
+    return db.users.find(id)
+  },
+  async createUser(data: { name: string }) {
+    return db.users.create(data)
   },
 }
 ```
 
 ```ts
-// Client (any page or component)
-import handlers from 'vike-api-router/handlers'
+// server/handlers/index.ts
+import { userHandler } from './userHandler'
 
-const user = await handlers.userHandler.getUser('123')
+export default {
+  userHandler,
+}
+```
+
+```ts
+// Client (any page or component)
+import { userHandler } from 'vike-api-router/handlers'
+
+const user = await userHandler.getUser('123')
 ```
 
 TypeScript types are automatically generated into `handlers.d.ts` at your project root when the Vite dev server starts. No manual declaration file needed.

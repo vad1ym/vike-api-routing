@@ -97,19 +97,14 @@ export function generateHandlersClientModule(_handler: HandlerEntry | null, rpcP
   lines.push('  }')
   lines.push('}')
   lines.push('')
-  lines.push('export default new Proxy({}, {')
-  lines.push('  get(_, handlerName) {')
-  lines.push('    if (typeof handlerName !== "string") return undefined')
-  lines.push('    return new Proxy({}, {')
-  lines.push('      get(_, fnName) {')
-  lines.push('        if (typeof fnName !== "string") return undefined')
-  lines.push('        return _rpc(handlerName, fnName)')
-  lines.push('      }')
-  lines.push('    })')
-  lines.push('  }')
-  lines.push('})')
-  lines.push('')
+  const names = _handler?.names ?? []
+  for (const name of names) {
+    lines.push(`export const ${name} = new Proxy({}, {`)
+    lines.push(`  get(_, fnName) { return typeof fnName === 'string' ? _rpc(${JSON.stringify(name)}, fnName) : undefined },`)
+    lines.push(`})`)
+  }
 
+  lines.push('')
   return lines.join('\n')
 }
 
@@ -125,7 +120,9 @@ export function generateHandlersDts(handler: HandlerEntry | null): string {
   lines.push(`declare module 'vike-api-router/handlers' {`)
 
   if (handler) {
-    lines.push(`  export { default } from ${JSON.stringify(handler.moduleId)}`)
+    for (const name of handler.names) {
+      lines.push(`  export const ${name}: (typeof import(${JSON.stringify(handler.moduleId)}))['default'][${JSON.stringify(name)}]`)
+    }
   }
 
   lines.push(`}`)

@@ -16,6 +16,8 @@ export interface RouteEntry {
 export interface HandlerEntry {
   /** Absolute path to server/handlers/index.ts */
   moduleId: string
+  /** Handler names extracted from the default export object keys */
+  names: string[]
 }
 
 export interface RouteManifest {
@@ -70,9 +72,19 @@ function scanRoutesDir(serverDir: string, subDir: string, prefix: string): Route
   return sortRoutesBySpecificity(routes)
 }
 
+function extractHandlerNames(filePath: string): string[] {
+  const src = fs.readFileSync(filePath, 'utf-8')
+  // Match `export default {` then capture everything until the closing `}`
+  const match = src.match(/export\s+default\s+\{([^}]*)\}/)
+  if (!match) return []
+  // Extract keys: handle both `key:` and shorthand `key,`
+  return [...match[1].matchAll(/^\s*(\w+)\s*[,:{]/gm)].map(m => m[1])
+}
+
 function scanHandlersDir(serverDir: string): HandlerEntry | null {
   const indexPath = path.join(serverDir, 'handlers', 'index.ts')
-  return fs.existsSync(indexPath) ? { moduleId: indexPath } : null
+  if (!fs.existsSync(indexPath)) return null
+  return { moduleId: indexPath, names: extractHandlerNames(indexPath) }
 }
 
 export function scanServerDir(serverDir: string, apiPrefix: string): RouteManifest {

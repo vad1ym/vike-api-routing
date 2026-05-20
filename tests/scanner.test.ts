@@ -66,6 +66,7 @@ describe('scanServerDir', () => {
     const manifest = scanServerDir(tmpDir, '/api')
     expect(manifest.handlers).not.toBeNull()
     expect(manifest.handlers!.moduleId).toContain('handlers/index.ts')
+    expect(manifest.handlers!.names).toContain('userHandler')
   })
 
   it('attaches correct global middleware to /api route', () => {
