@@ -8,6 +8,8 @@ export default defineConfig({
     'config': 'lib/config.ts',
     'handlers': 'lib/handlers.ts',
     'proxy': 'lib/proxy.ts',
+    'internal/routeAdapter': 'lib/middleware/routeAdapter.ts',
+    'internal/rpcAdapter': 'lib/middleware/rpcAdapter.ts',
   },
   outDir: 'dist',
   format: ['esm'],

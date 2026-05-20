@@ -47,6 +47,14 @@
     "./proxy": {
       "types": "./lib/proxy.ts",
       "default": "./dist/proxy.js"
+    },
+    "./internal/routeAdapter": {
+      "types": "./lib/middleware/routeAdapter.ts",
+      "default": "./dist/internal/routeAdapter.js"
+    },
+    "./internal/rpcAdapter": {
+      "types": "./lib/middleware/rpcAdapter.ts",
+      "default": "./dist/internal/rpcAdapter.js"
     }
   },
   "files": [

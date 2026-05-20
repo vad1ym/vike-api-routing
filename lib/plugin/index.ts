@@ -5,12 +5,15 @@ import {
   ROUTES_MODULE_ID,
   HANDLERS_MODULE_ID,
   HANDLERS_CLIENT_MODULE_ID,
+  MIDDLEWARE_MODULE_ID,
   RESOLVED_ROUTES_MODULE_ID,
   RESOLVED_HANDLERS_MODULE_ID,
   RESOLVED_HANDLERS_CLIENT_MODULE_ID,
+  RESOLVED_MIDDLEWARE_MODULE_ID,
   generateRoutesModule,
   generateHandlersModule,
   generateHandlersClientModule,
+  generateMiddlewareModule,
 } from './virtual.js'
 
 export interface VikeApiRouterOptions {
@@ -52,9 +55,12 @@ export function vikeApiRouter(options: VikeApiRouterOptions = {}): Plugin {
       if (id === ROUTES_MODULE_ID) return RESOLVED_ROUTES_MODULE_ID
       if (id === HANDLERS_MODULE_ID) return RESOLVED_HANDLERS_MODULE_ID
       if (id === HANDLERS_CLIENT_MODULE_ID) return RESOLVED_HANDLERS_CLIENT_MODULE_ID
+      if (id === MIDDLEWARE_MODULE_ID) return RESOLVED_MIDDLEWARE_MODULE_ID
     },
 
     load(id) {
+      if (id === RESOLVED_MIDDLEWARE_MODULE_ID) return generateMiddlewareModule()
+
       const { routesCode, handlersCode, handlersClientCode } = generateRoutes()
 
       if (id === RESOLVED_ROUTES_MODULE_ID) return routesCode
@@ -136,7 +142,7 @@ async function sendResponse(response: Response, res: import('node:http').ServerR
 }
 
 function invalidateVirtualModules(server: import('vite').ViteDevServer): void {
-  for (const id of [RESOLVED_ROUTES_MODULE_ID, RESOLVED_HANDLERS_MODULE_ID, RESOLVED_HANDLERS_CLIENT_MODULE_ID]) {
+  for (const id of [RESOLVED_ROUTES_MODULE_ID, RESOLVED_HANDLERS_MODULE_ID, RESOLVED_HANDLERS_CLIENT_MODULE_ID, RESOLVED_MIDDLEWARE_MODULE_ID]) {
     const mod = server.moduleGraph.getModuleById(id)
     if (mod) server.moduleGraph.invalidateModule(mod)
   }

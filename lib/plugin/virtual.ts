@@ -4,10 +4,12 @@ import type { RouteEntry, HandlerEntry } from './scanner.js'
 export const ROUTES_MODULE_ID = 'virtual:vike-api-router/routes'
 export const HANDLERS_MODULE_ID = 'virtual:vike-api-router/handlers'
 export const HANDLERS_CLIENT_MODULE_ID = 'virtual:vike-api-router/handlers-client'
+export const MIDDLEWARE_MODULE_ID = 'virtual:vike-api-router/middleware'
 
 export const RESOLVED_ROUTES_MODULE_ID = '\0' + ROUTES_MODULE_ID
 export const RESOLVED_HANDLERS_MODULE_ID = '\0' + HANDLERS_MODULE_ID
 export const RESOLVED_HANDLERS_CLIENT_MODULE_ID = '\0' + HANDLERS_CLIENT_MODULE_ID
+export const RESOLVED_MIDDLEWARE_MODULE_ID = '\0' + MIDDLEWARE_MODULE_ID
 
 /**
  * Generate the routes virtual module code.
@@ -111,4 +113,29 @@ export function generateHandlersClientModule(handlers: HandlerEntry[], rpcPrefix
 
   lines.push('')
   return lines.join('\n')
+}
+
+/**
+ * Generate the middleware virtual module code.
+ *
+ * Imports routes and handlers statically (resolved by Vite at bundle time),
+ * so the middleware can be used in +server.ts without runtime virtual: imports
+ * that would break in SSR worker threads.
+ */
+export function generateMiddlewareModule(): string {
+  return `
+import { enhance } from '@universal-middleware/core'
+import { routes } from 'virtual:vike-api-router/routes'
+import { handlers, rpcPrefix } from 'virtual:vike-api-router/handlers'
+import { createRouter } from 'vike-api-router/internal/routeAdapter'
+import { dispatchRpc } from 'vike-api-router/internal/rpcAdapter'
+
+async function handle(request, _context, _runtime) {
+  const rpcResponse = await dispatchRpc(request, handlers, rpcPrefix)
+  if (rpcResponse) return rpcResponse
+  return createRouter(routes).dispatch(request)
+}
+
+export const vikeApiRouterMiddleware = enhance(handle, {})
+`.trimStart()
 }
