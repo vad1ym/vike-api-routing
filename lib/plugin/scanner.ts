@@ -16,6 +16,11 @@ export interface RouteEntry {
    * The route is also registered as an RPC handler under this name.
    */
   namedExport?: string
+  /**
+   * If the named export uses defineProxyRoute(), this is the proxy target URL.
+   * The client generator emits a proxyHandler-style interface instead of _routeCall.
+   */
+  proxyTarget?: string
 }
 
 export interface HandlerEntry {
@@ -33,9 +38,8 @@ export interface RouteManifest {
 
 const SKIPPED_DIRS = new Set(['.git', '.vite', 'dist', 'node_modules'])
 const METHOD_FILE_RE = /^\+(?:get|post|put|patch|delete|head|options|all)\.ts$/
-const MIDDLEWARE_FILE = '+middleware.ts'
 
-function extractNamedRouteExport(filePath: string): string | undefined {
+function extractNamedRouteExport(filePath: string): { name: string; proxyTarget?: string } | undefined {
   const src = fs.readFileSync(filePath, 'utf-8')
   const matches = [...src.matchAll(/export\s+const\s+(\w+)\s*=/g)]
   if (matches.length === 0) return undefined
@@ -44,7 +48,10 @@ function extractNamedRouteExport(filePath: string): string | undefined {
       `[vike-api-router] ${filePath}: only one named defineRoute export is allowed per route file, found: ${matches.map(m => m[1]).join(', ')}`,
     )
   }
-  return matches[0][1]
+  const name = matches[0][1]
+  // Detect defineProxyRoute({ target: '...' })
+  const proxyMatch = src.match(/defineProxyRoute\s*\(\s*\{[^}]*target\s*:\s*['"`]([^'"`]+)['"`]/)
+  return { name, proxyTarget: proxyMatch?.[1] }
 }
 
 function walkDir(dir: string, callback: (filePath: string) => void): void {
@@ -83,8 +90,8 @@ function scanRoutesDir(serverDir: string, subDir: string, prefix: string): Route
     const middlewareSubDir = relativeDir === '.' ? subDir : `${subDir}/${relativeDir}`
     const middlewares = collectMiddlewareFiles(serverDir, middlewareSubDir)
 
-    const namedExport = extractNamedRouteExport(filePath)
-    routes.push({ method, path: routePath, moduleId: filePath, middlewares, namedExport })
+    const named = extractNamedRouteExport(filePath)
+    routes.push({ method, path: routePath, moduleId: filePath, middlewares, namedExport: named?.name, proxyTarget: named?.proxyTarget })
   })
 
   return sortRoutesBySpecificity(routes)

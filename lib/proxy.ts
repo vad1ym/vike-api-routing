@@ -1,4 +1,6 @@
 import type { ApiContext } from './types.js'
+import { defineRoute } from './define.js'
+import type { DefineRouteResult } from './define.js'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -249,5 +251,36 @@ export function proxyHandler(options: ProxyHandlerOptions): ProxyHandlerClient {
     patch: (path, opts) => request('PATCH', path, opts),
     delete: (path, opts) => request('DELETE', path, opts),
     request,
+  }
+}
+
+// ─── defineProxyRoute ─────────────────────────────────────────────────────────
+
+export interface DefineProxyRouteResult extends DefineRouteResult {
+  __proxyTarget: string
+}
+
+/**
+ * Declares a proxy route that is also callable as a typed handler from client code.
+ * Use as a named export in a +all.ts file.
+ *
+ * On SSR: calls the upstream target directly via proxyHandler.
+ * On browser: calls the actual route endpoint (e.g. /api/*).
+ *
+ * @example
+ * // server/api/@...rest/+all.ts
+ * import { defineProxyRoute } from 'vike-api-router/proxy'
+ * export const proxy = defineProxyRoute({ target: 'https://api.example.com' })
+ */
+export function isDefineProxyRoute(value: unknown): value is DefineProxyRouteResult {
+  return typeof value === 'object' && value !== null && '__proxyTarget' in (value as object)
+}
+
+export function defineProxyRoute(options: ProxyRouteOptions): DefineProxyRouteResult {
+  const routeHandler = proxyRoute(options)
+  const target = typeof options.target === 'string' ? options.target : options.target.href
+  return {
+    ...defineRoute({ handler: routeHandler }),
+    __proxyTarget: target,
   }
 }

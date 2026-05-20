@@ -1,7 +1,7 @@
 # vike-api-router
 
 > [!WARNING]
-> WIP, api may change. This library is already usable in real projects, but it is still not battle-tested across a wide range of production setups. Use it deliberately and validate the behavior against your server framework, middleware chain, and deployment environment.
+> **Proof of concept — partially works, not well tested.** Core features (file-based routes, middleware, proxy) are functional and used in real projects. Advanced features (`defineRoute`, `defineProxyRoute`, SSR/client handler unification) are experimental and may have edge cases. API may change. Validate behavior against your own setup before relying on it.
 
 File-based API routing for [Vike](https://vike.dev). Define your server endpoints by creating files — no manual route registration needed.
 

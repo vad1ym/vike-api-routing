@@ -24,3 +24,4 @@ export function defineRoute<P extends Record<string, string> = Record<string, st
 export function isDefineRoute(value: unknown): value is DefineRouteResult {
   return typeof value === 'object' && value !== null && (value as DefineRouteResult).__type === 'defineRoute'
 }
+

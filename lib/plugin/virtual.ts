@@ -164,13 +164,25 @@ export function generateHandlersClientModule(
 
   for (const route of namedRoutes) {
     const name = route.namedExport!
-    const routePath = route.path
-    lines.push(`export const ${name} = import.meta.env.SSR`)
-    lines.push(`  ? async (ctx = {}) => {`)
-    lines.push(`      const { ${name}: _r } = await import(${JSON.stringify(route.moduleId)})`)
-    lines.push(`      return _r.handler({ params: ctx.params ?? {}, req: new Request('http://localhost'), method: ${JSON.stringify(route.method)} })`)
-    lines.push(`    }`)
-    lines.push(`  : _routeCall(${JSON.stringify(route.method)}, ${JSON.stringify(routePath)})`)
+    if (route.proxyTarget) {
+      // defineProxyRoute — SSR calls upstream directly via proxyHandler, browser uses RPC-style proxy
+      const v = 'vike-api-router/proxy'
+      lines.push(`const _proxy_${name} = import.meta.env.SSR`)
+      lines.push(`  ? (await import('${v}')).proxyHandler({ target: ${JSON.stringify(route.proxyTarget)} })`)
+      lines.push(`  : null`)
+      lines.push(`export const ${name} = import.meta.env.SSR`)
+      lines.push(`  ? _proxy_${name}`)
+      lines.push(`  : new Proxy({}, {`)
+      lines.push(`      get(_, fnName) { return typeof fnName === 'string' ? _rpc(${JSON.stringify(name)}, fnName) : undefined },`)
+      lines.push(`    })`)
+    } else {
+      lines.push(`export const ${name} = import.meta.env.SSR`)
+      lines.push(`  ? async (ctx = {}) => {`)
+      lines.push(`      const { ${name}: _r } = await import(${JSON.stringify(route.moduleId)})`)
+      lines.push(`      return _r.handler({ params: ctx.params ?? {}, req: new Request('http://localhost'), method: ${JSON.stringify(route.method)} })`)
+      lines.push(`    }`)
+      lines.push(`  : _routeCall(${JSON.stringify(route.method)}, ${JSON.stringify(route.path)})`)
+    }
   }
 
   lines.push('')
@@ -195,7 +207,11 @@ export function generateHandlersDts(handler: HandlerEntry | null, routeHandlers:
     }
   }
   for (const route of namedRoutes) {
-    lines.push(`  export const ${route.namedExport}: typeof import(${JSON.stringify(route.moduleId)})[${JSON.stringify(route.namedExport)}]`)
+    if (route.proxyTarget) {
+      lines.push(`  export const ${route.namedExport}: import('vike-api-router/proxy').ProxyHandlerClient`)
+    } else {
+      lines.push(`  export const ${route.namedExport}: typeof import(${JSON.stringify(route.moduleId)})[${JSON.stringify(route.namedExport)}]`)
+    }
   }
 
   lines.push(`}`)

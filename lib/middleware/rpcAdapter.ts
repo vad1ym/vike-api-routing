@@ -1,4 +1,5 @@
 import { isDefineRoute } from '../define.js'
+import { isDefineProxyRoute } from '../proxy.js'
 import type { ApiContext, MiddlewareFn } from '../types.js'
 
 async function runWithMiddlewares(
@@ -61,9 +62,11 @@ export async function dispatchRpc(
     })
   }
 
-  // A DefineRouteResult is itself the handler — no fnName lookup needed
-  const fn: unknown = isDefineRoute(handlerModule) ? handlerModule : handlerModule[fnName]
-  if (!isDefineRoute(fn) && typeof fn !== 'function') {
+  // DefineProxyRouteResult / DefineRouteResult are themselves the handler — no fnName lookup needed
+  const fn: unknown = (isDefineRoute(handlerModule) || isDefineProxyRoute(handlerModule))
+    ? handlerModule
+    : handlerModule[fnName]
+  if (!isDefineRoute(fn) && !isDefineProxyRoute(fn) && typeof fn !== 'function') {
     return new Response(JSON.stringify({ message: `Function "${fnName}" not found in handler "${handlerName}"` }), {
       status: 404,
       headers: { 'Content-Type': 'application/json' },
@@ -83,7 +86,12 @@ export async function dispatchRpc(
 
   try {
     let result: unknown
-    if (isDefineRoute(fn as unknown)) {
+    if (isDefineProxyRoute(fn as unknown)) {
+      // fn is a DefineProxyRouteResult — delegate to proxyHandler with (path, opts) args
+      const { proxyHandler } = await import('../proxy.js')
+      const client = proxyHandler({ target: (fn as unknown as { __proxyTarget: string }).__proxyTarget })
+      result = await (client as unknown as Record<string, (...a: unknown[]) => unknown>)[fnName](...args)
+    } else if (isDefineRoute(fn as unknown)) {
       // fn is a DefineRouteResult — build ApiContext from args[0] and run middleware chain
       const arg = (args[0] ?? {}) as { params?: Record<string, string>; body?: unknown; query?: unknown }
       const ctx: ApiContext = {
