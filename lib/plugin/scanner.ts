@@ -74,11 +74,29 @@ function scanRoutesDir(serverDir: string, subDir: string, prefix: string): Route
 
 function extractHandlerNames(filePath: string): string[] {
   const src = fs.readFileSync(filePath, 'utf-8')
-  // Match `export default {` then capture everything until the closing `}`
-  const match = src.match(/export\s+default\s+\{([^}]*)\}/)
-  if (!match) return []
-  // Extract keys: handle both `key:` and shorthand `key,`
-  return [...match[1].matchAll(/^\s*(\w+)\s*[,:{]/gm)].map(m => m[1])
+  const defStart = src.search(/export\s+default\s+\{/)
+  if (defStart === -1) return []
+
+  const openBrace = src.indexOf('{', defStart)
+  const names: string[] = []
+  let depth = 0
+
+  // Walk character by character tracking brace depth.
+  // Only capture identifier keys at depth === 1 (direct children of export default {}).
+  for (let i = openBrace; i < src.length; i++) {
+    const ch = src[i]
+    if (ch === '{' || ch === '(') { depth++; continue }
+    if (ch === '}' || ch === ')') { depth--; if (depth === 0) break; continue }
+    if (depth !== 1) continue
+    // At depth 1, try to match an identifier key
+    const keyMatch = src.slice(i).match(/^(\w+)\s*[,:]/)
+    if (keyMatch) {
+      names.push(keyMatch[1])
+      i += keyMatch[1].length - 1
+    }
+  }
+
+  return names
 }
 
 function scanHandlersDir(serverDir: string): HandlerEntry | null {

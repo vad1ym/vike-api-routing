@@ -118,6 +118,55 @@ describe('scanServerDir', () => {
     }
   })
 
+  it('extracts only top-level keys from export default — ignores nested object keys', () => {
+    const tmp = createTmpServer({
+      'handlers/index.ts': `
+import { proxyHandler } from 'vike-api-router/proxy'
+export default {
+  oladoctor: proxyHandler({
+    target: 'https://example.com',
+  }),
+}`,
+    })
+    try {
+      const manifest = scanServerDir(tmp, '/api')
+      expect(manifest.handlers!.names).toEqual(['oladoctor'])
+      expect(manifest.handlers!.names).not.toContain('target')
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true })
+    }
+  })
+
+  it('extracts shorthand property keys from export default', () => {
+    const tmp = createTmpServer({
+      'handlers/index.ts': `
+import { userHandler } from './userHandler'
+import { authHandler } from './authHandler'
+export default {
+  userHandler,
+  authHandler,
+}`,
+    })
+    try {
+      const manifest = scanServerDir(tmp, '/api')
+      expect(manifest.handlers!.names).toEqual(['userHandler', 'authHandler'])
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true })
+    }
+  })
+
+  it('returns null handler when no handlers/index.ts exists', () => {
+    const tmp = createTmpServer({
+      'handlers/other.ts': 'export const x = 1',
+    })
+    try {
+      const manifest = scanServerDir(tmp, '/api')
+      expect(manifest.handlers).toBeNull()
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true })
+    }
+  })
+
   it('returns empty arrays when directories do not exist', () => {
     const empty = createTmpServer({})
     try {
