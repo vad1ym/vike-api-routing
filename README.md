@@ -102,7 +102,7 @@ Middleware chain for `GET /api/users/1`:
 
 ## RPC Handlers
 
-Create `server/handlers/index.ts` and export a default object mapping handler names to objects with async methods. Under the hood each method becomes a `POST /_rpc/<name>/<fn>` endpoint — no separate endpoint URL needed in your code.
+Create `server/handlers/index.ts` and export a default object mapping handler names to objects with async methods.
 
 ```ts
 // server/handlers/userHandler.ts
@@ -125,12 +125,16 @@ export default {
 }
 ```
 
+Import from `vike-api-router/handlers` in any page, component, or data hook — the same import works in both SSR and the browser:
+
 ```ts
-// Client (any page or component)
 import { userHandler } from 'vike-api-router/handlers'
 
 const user = await userHandler.getUser('123')
 ```
+
+- **SSR** — calls the handler function directly, no HTTP round-trip
+- **Browser** — makes a `POST /_rpc/userHandler/getUser` request under the hood
 
 TypeScript types are automatically generated into `handlers.d.ts` at your project root when the Vite dev server starts. No manual declaration file needed.
 

@@ -77,8 +77,9 @@ export function generateHandlersModule(handler: HandlerEntry | null, rpcPrefix: 
  * Exports a default Proxy that lazily creates per-handler proxies.
  * Each property access returns an async function that POSTs to /_rpc/handlerName/fnName.
  */
-export function generateHandlersClientModule(_handler: HandlerEntry | null, rpcPrefix: string): string {
+export function generateHandlersClientModule(handler: HandlerEntry | null, rpcPrefix: string): string {
   const lines: string[] = []
+  const names = handler?.names ?? []
 
   lines.push(`const _prefix = ${JSON.stringify(rpcPrefix)}`)
   lines.push('')
@@ -97,11 +98,19 @@ export function generateHandlersClientModule(_handler: HandlerEntry | null, rpcP
   lines.push('  }')
   lines.push('}')
   lines.push('')
-  const names = _handler?.names ?? []
-  for (const name of names) {
-    lines.push(`export const ${name} = new Proxy({}, {`)
-    lines.push(`  get(_, fnName) { return typeof fnName === 'string' ? _rpc(${JSON.stringify(name)}, fnName) : undefined },`)
-    lines.push(`})`)
+
+  if (handler && names.length > 0) {
+    lines.push(`const _ssrHandlers = import.meta.env.SSR`)
+    lines.push(`  ? (await import(${JSON.stringify(handler.moduleId)})).default`)
+    lines.push(`  : null`)
+    lines.push('')
+    for (const name of names) {
+      lines.push(`export const ${name} = import.meta.env.SSR`)
+      lines.push(`  ? _ssrHandlers[${JSON.stringify(name)}]`)
+      lines.push(`  : new Proxy({}, {`)
+      lines.push(`      get(_, fnName) { return typeof fnName === 'string' ? _rpc(${JSON.stringify(name)}, fnName) : undefined },`)
+      lines.push(`    })`)
+    }
   }
 
   lines.push('')
