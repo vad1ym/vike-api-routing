@@ -93,16 +93,16 @@ export async function dispatchRpc(
       result = await (client as unknown as Record<string, (...a: unknown[]) => unknown>)[fnName](...args)
     } else if (isDefineRoute(fn as unknown)) {
       // fn is a DefineRouteResult — build ApiContext from args[0] and run middleware chain
+      const defineRouteFn = fn as unknown as import('../define.js').DefineRouteResult
       const arg = (args[0] ?? {}) as { params?: Record<string, string>; body?: unknown; query?: unknown }
       const ctx: ApiContext = {
         params: arg.params ?? {},
         req,
         method: req.method,
       }
-      const allMiddlewares = fn.middlewares
-      result = await runWithMiddlewares(allMiddlewares, req, () => fn.handler(ctx))
+      result = await runWithMiddlewares(defineRouteFn.middlewares, req, () => Promise.resolve(defineRouteFn.handler(ctx)))
     } else {
-      result = await fn(...args)
+      result = await (fn as (...a: unknown[]) => unknown)(...args)
     }
     return new Response(JSON.stringify(result), {
       status: 200,
