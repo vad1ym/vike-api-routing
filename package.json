@@ -43,6 +43,10 @@
     "./handlers": {
       "types": "./lib/handlers.ts",
       "default": "./dist/handlers.js"
+    },
+    "./proxy": {
+      "types": "./lib/proxy.ts",
+      "default": "./dist/proxy.js"
     }
   },
   "files": [

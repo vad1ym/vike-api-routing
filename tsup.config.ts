@@ -7,6 +7,7 @@ export default defineConfig({
     client: 'lib/client.ts',
     'config': 'lib/config.ts',
     'handlers': 'lib/handlers.ts',
+    'proxy': 'lib/proxy.ts',
   },
   outDir: 'dist',
   format: ['esm'],

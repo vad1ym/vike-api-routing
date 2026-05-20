@@ -136,6 +136,125 @@ declare module 'vike-api-router/handlers' {
 
 ---
 
+## Proxy
+
+Import from `vike-api-router/proxy`.
+
+### `proxyRoute` — HTTP proxy endpoint
+
+Returns a `RouteHandler` that forwards all requests to an upstream target. Use as the default export of a `+all.ts` file.
+
+```ts
+// server/api/github/@...path/+all.ts
+import { proxyRoute } from 'vike-api-router/proxy'
+
+export default proxyRoute({
+  target: 'https://api.github.com',
+
+  headers: {
+    Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
+  },
+})
+```
+
+`GET /api/github/repos/foo/bar` → `GET https://api.github.com/repos/foo/bar`
+
+Method, query string, and body are forwarded automatically. The upstream `Response` is returned as-is.
+
+**Options:**
+
+```ts
+type ProxyRouteOptions = {
+  target: string | URL
+
+  // Extra headers to add (static or dynamic)
+  headers?: HeadersInit | ((ctx: ApiContext) => HeadersInit | Promise<HeadersInit>)
+
+  // Which incoming headers to forward. Default: ['accept', 'accept-language', 'content-type', 'user-agent']
+  forwardHeaders?: boolean | string[]
+
+  // Headers to always strip. Default: ['host', 'connection', 'content-length']
+  stripHeaders?: string[]
+
+  // Override the forwarded path
+  rewritePath?: (ctx: ApiContext) => string
+
+  // Override the full upstream URL
+  rewriteUrl?: (url: URL, ctx: ApiContext) => URL | Promise<URL>
+
+  // Intercept/modify the outgoing request (return Response to short-circuit)
+  onRequest?: (request: Request, ctx: ApiContext) => Request | Response | Promise<Request | Response>
+
+  // Intercept/modify the upstream response
+  onResponse?: (response: Response, ctx: ApiContext) => Response | Promise<Response>
+}
+```
+
+---
+
+### `proxyHandler` — server-side HTTP client
+
+Returns a typed HTTP client for use inside `server/handlers/`. Handles JSON serialization, query params, and throws `ProxyError` on non-2xx responses.
+
+```ts
+// server/handlers/github.ts
+import { proxyHandler } from 'vike-api-router/proxy'
+
+const github = proxyHandler({
+  target: 'https://api.github.com',
+  headers: { Authorization: `Bearer ${process.env.GITHUB_TOKEN}` },
+})
+
+export async function getRepo(owner: string, repo: string) {
+  return github.get(`/repos/${owner}/${repo}`)
+}
+```
+
+**Methods:** `get`, `post`, `put`, `patch`, `delete`, `request(method, path, options?)`
+
+**Request options:**
+
+```ts
+type RequestOptions = {
+  query?: Record<string, unknown>   // serialized to URLSearchParams
+  body?: unknown                    // JSON.stringify'd, sets content-type automatically
+  headers?: HeadersInit
+  signal?: AbortSignal
+}
+```
+
+**Options:**
+
+```ts
+type ProxyHandlerOptions = {
+  target: string | URL
+  headers?: HeadersInit | (() => HeadersInit | Promise<HeadersInit>)
+  fetch?: typeof fetch
+  onRequest?: (request: Request) => Request | Promise<Request>
+  onResponse?: (response: Response) => Response | Promise<Response>
+}
+```
+
+**Error handling:**
+
+```ts
+import { ProxyError } from 'vike-api-router/proxy'
+
+try {
+  await github.get('/repos/missing')
+} catch (error) {
+  if (error instanceof ProxyError) {
+    console.log(error.status)   // HTTP status code
+    console.log(error.data)     // parsed response body
+  }
+}
+```
+
+- `204` → returns `undefined`
+- non-2xx → throws `ProxyError`
+
+---
+
 ## Setup
 
 ### 1. Vite plugin
