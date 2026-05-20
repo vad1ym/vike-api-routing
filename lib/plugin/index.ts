@@ -1,3 +1,4 @@
+import fs from 'node:fs'
 import path from 'node:path'
 import type { Plugin } from 'vite'
 import { scanServerDir } from './scanner.js'
@@ -13,6 +14,7 @@ import {
   generateRoutesModule,
   generateHandlersModule,
   generateHandlersClientModule,
+  generateHandlersDts,
   generateMiddlewareModule,
 } from './virtual.js'
 
@@ -35,6 +37,12 @@ export function vikeApiRouter(options: VikeApiRouterOptions = {}): Plugin {
     return serverDir ?? path.resolve(rootDir, options.serverDir ?? 'server')
   }
 
+  function writeHandlersDts() {
+    const manifest = scanServerDir(getServerDir(), apiPrefix)
+    const dtsPath = path.resolve(rootDir, 'handlers.d.ts')
+    fs.writeFileSync(dtsPath, generateHandlersDts(manifest.handlers), 'utf-8')
+  }
+
   function generateRoutes() {
     const manifest = scanServerDir(getServerDir(), apiPrefix)
     return {
@@ -49,6 +57,7 @@ export function vikeApiRouter(options: VikeApiRouterOptions = {}): Plugin {
     configResolved(config) {
       rootDir = config.root
       serverDir = path.resolve(rootDir, options.serverDir ?? 'server')
+      writeHandlersDts()
     },
 
     resolveId(id) {
@@ -74,11 +83,13 @@ export function vikeApiRouter(options: VikeApiRouterOptions = {}): Plugin {
 
       server.watcher.on('add', (file) => {
         if (!file.startsWith(watchDir)) return
+        writeHandlersDts()
         invalidateVirtualModules(server)
       })
 
       server.watcher.on('unlink', (file) => {
         if (!file.startsWith(watchDir)) return
+        writeHandlersDts()
         invalidateVirtualModules(server)
       })
 

@@ -116,6 +116,27 @@ export function generateHandlersClientModule(handlers: HandlerEntry[], rpcPrefix
 }
 
 /**
+ * Generate the handlers.d.ts declaration file content.
+ *
+ * Re-exports every named export from each handler module so that TypeScript
+ * knows what's available when importing from 'vike-api-router/handlers'.
+ */
+export function generateHandlersDts(handlers: HandlerEntry[]): string {
+  const lines: string[] = []
+
+  lines.push(`declare module 'vike-api-router/handlers' {`)
+
+  for (const handler of handlers) {
+    lines.push(`  export * from ${JSON.stringify(handler.moduleId)}`)
+  }
+
+  lines.push(`}`)
+  lines.push(``)
+
+  return lines.join('\n')
+}
+
+/**
  * Generate the middleware virtual module code.
  *
  * Imports routes and handlers statically (resolved by Vite at bundle time),
