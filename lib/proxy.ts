@@ -243,6 +243,7 @@ export function proxyHandler(options: ProxyHandlerOptions): ProxyHandlerClient {
   }
 
   return {
+    __isProxyHandlerClient: true as const,
     get: (path, opts) => request('GET', path, opts),
     post: (path, opts) => request('POST', path, opts),
     put: (path, opts) => request('PUT', path, opts),

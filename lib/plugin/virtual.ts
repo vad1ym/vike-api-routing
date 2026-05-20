@@ -4,6 +4,7 @@ import type { RouteEntry, HandlerEntry } from './scanner.js'
 export const ROUTES_MODULE_ID = 'virtual:vike-api-router/routes'
 export const HANDLERS_MODULE_ID = 'virtual:vike-api-router/handlers'
 export const HANDLERS_CLIENT_MODULE_ID = 'virtual:vike-api-router/handlers-client'
+export const HANDLERS_CLIENT_BARE_ID = 'vike-api-router/handlers'
 export const MIDDLEWARE_MODULE_ID = 'virtual:vike-api-router/middleware'
 
 export const RESOLVED_ROUTES_MODULE_ID = '\0' + ROUTES_MODULE_ID
@@ -53,35 +54,30 @@ export function generateRoutesModule(apiRoutes: RouteEntry[], customRoutes: Rout
  * Exports a `handlers` object mapping handler name → { fnName → fn }.
  * Also exports `rpcPrefix` for the dispatcher to use.
  */
-export function generateHandlersModule(handlers: HandlerEntry[], rpcPrefix: string): string {
+export function generateHandlersModule(handler: HandlerEntry | null, rpcPrefix: string): string {
   const lines: string[] = []
 
-  handlers.forEach((handler, i) => {
-    lines.push(`import * as handler_${i} from ${JSON.stringify(handler.moduleId)}`)
-  })
+  if (handler) {
+    lines.push(`import _handlers from ${JSON.stringify(handler.moduleId)}`)
+    lines.push('')
+    lines.push(`export const rpcPrefix = ${JSON.stringify(rpcPrefix)}`)
+    lines.push('export const handlers = _handlers')
+  } else {
+    lines.push(`export const rpcPrefix = ${JSON.stringify(rpcPrefix)}`)
+    lines.push('export const handlers = {}')
+  }
 
   lines.push('')
-  lines.push(`export const rpcPrefix = ${JSON.stringify(rpcPrefix)}`)
-  lines.push('')
-  lines.push('export const handlers = {')
-
-  handlers.forEach((handler, i) => {
-    lines.push(`  ${JSON.stringify(handler.name)}: handler_${i},`)
-  })
-
-  lines.push('}')
-  lines.push('')
-
   return lines.join('\n')
 }
 
 /**
  * Generate the handlers client virtual module code.
  *
- * Exports proxy objects that call fetch('/_rpc/handlerName/fnName', ...) under the hood.
- * Each handler export is a function that serializes args and deserializes the response.
+ * Exports a default Proxy that lazily creates per-handler proxies.
+ * Each property access returns an async function that POSTs to /_rpc/handlerName/fnName.
  */
-export function generateHandlersClientModule(handlers: HandlerEntry[], rpcPrefix: string): string {
+export function generateHandlersClientModule(_handler: HandlerEntry | null, rpcPrefix: string): string {
   const lines: string[] = []
 
   lines.push(`const _prefix = ${JSON.stringify(rpcPrefix)}`)
@@ -101,17 +97,19 @@ export function generateHandlersClientModule(handlers: HandlerEntry[], rpcPrefix
   lines.push('  }')
   lines.push('}')
   lines.push('')
-
-  // Named exports for every exported function in every handler module.
-  // Functions are typed via TypeScript import — the build-time import is only for types.
-  for (const handler of handlers) {
-    lines.push(`// ${handler.name}`)
-    lines.push(`export const ${handler.name} = new Proxy({}, {`)
-    lines.push(`  get(_, fnName) { return typeof fnName === 'string' ? _rpc(${JSON.stringify(handler.name)}, fnName) : undefined },`)
-    lines.push(`})`)
-  }
-
+  lines.push('export default new Proxy({}, {')
+  lines.push('  get(_, handlerName) {')
+  lines.push('    if (typeof handlerName !== "string") return undefined')
+  lines.push('    return new Proxy({}, {')
+  lines.push('      get(_, fnName) {')
+  lines.push('        if (typeof fnName !== "string") return undefined')
+  lines.push('        return _rpc(handlerName, fnName)')
+  lines.push('      }')
+  lines.push('    })')
+  lines.push('  }')
+  lines.push('})')
   lines.push('')
+
   return lines.join('\n')
 }
 
@@ -121,13 +119,13 @@ export function generateHandlersClientModule(handlers: HandlerEntry[], rpcPrefix
  * Re-exports every named export from each handler module so that TypeScript
  * knows what's available when importing from 'vike-api-router/handlers'.
  */
-export function generateHandlersDts(handlers: HandlerEntry[]): string {
+export function generateHandlersDts(handler: HandlerEntry | null): string {
   const lines: string[] = []
 
   lines.push(`declare module 'vike-api-router/handlers' {`)
 
-  for (const handler of handlers) {
-    lines.push(`  export * from ${JSON.stringify(handler.moduleId)}`)
+  if (handler) {
+    lines.push(`  export { default } from ${JSON.stringify(handler.moduleId)}`)
   }
 
   lines.push(`}`)

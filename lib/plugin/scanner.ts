@@ -14,16 +14,14 @@ export interface RouteEntry {
 }
 
 export interface HandlerEntry {
-  /** Handler name derived from filename, e.g. userHandler */
-  name: string
-  /** Absolute path to the handler module file */
+  /** Absolute path to server/handlers/index.ts */
   moduleId: string
 }
 
 export interface RouteManifest {
   apiRoutes: RouteEntry[]
   customRoutes: RouteEntry[]
-  handlers: HandlerEntry[]
+  handlers: HandlerEntry | null
 }
 
 const SKIPPED_DIRS = new Set(['.git', '.vite', 'dist', 'node_modules'])
@@ -72,19 +70,9 @@ function scanRoutesDir(serverDir: string, subDir: string, prefix: string): Route
   return sortRoutesBySpecificity(routes)
 }
 
-function scanHandlersDir(serverDir: string): HandlerEntry[] {
-  const dir = path.join(serverDir, 'handlers')
-  const handlers: HandlerEntry[] = []
-
-  if (!fs.existsSync(dir)) return handlers
-
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (!entry.isFile() || !entry.name.endsWith('.ts')) continue
-    const name = path.basename(entry.name, '.ts')
-    handlers.push({ name, moduleId: path.join(dir, entry.name) })
-  }
-
-  return handlers
+function scanHandlersDir(serverDir: string): HandlerEntry | null {
+  const indexPath = path.join(serverDir, 'handlers', 'index.ts')
+  return fs.existsSync(indexPath) ? { moduleId: indexPath } : null
 }
 
 export function scanServerDir(serverDir: string, apiPrefix: string): RouteManifest {

@@ -1,7 +1,7 @@
 # vike-api-router
 
 > [!WARNING]
-> This library is already usable in real projects, but it is still not battle-tested across a wide range of production setups. Use it deliberately and validate the behavior against your server framework, middleware chain, and deployment environment.
+> WIP, api may change. This library is already usable in real projects, but it is still not battle-tested across a wide range of production setups. Use it deliberately and validate the behavior against your server framework, middleware chain, and deployment environment.
 
 File-based API routing for [Vike](https://vike.dev). Define your server endpoints by creating files — no manual route registration needed.
 
@@ -15,7 +15,7 @@ Works with any server framework supported by [universal-middleware](https://gith
 server/
   api/          → HTTP endpoints with /api/ prefix
   routes/       → HTTP endpoints without prefix (robots.txt, sitemaps, etc.)
-  handlers/     → RPC handlers, callable from client code directly
+  handlers/     → RPC handlers (index.ts), callable from client code directly
 ```
 
 ### File naming
@@ -102,37 +102,32 @@ Middleware chain for `GET /api/users/1`:
 
 ## RPC Handlers
 
-Files in `server/handlers/` export functions that can be called from client code. Under the hood they become `POST /_rpc/<name>/<fn>` endpoints — no separate endpoint URL needed in your code.
+Create `server/handlers/index.ts` and export a default object mapping handler names to objects with async methods. Under the hood each method becomes a `POST /_rpc/<name>/<fn>` endpoint — no separate endpoint URL needed in your code.
 
 ```ts
-// server/handlers/userHandler.ts
-export async function getUser(id: string) {
-  return db.users.find(id)
-}
+// server/handlers/index.ts
+import { db } from '../db'
 
-export async function createUser(data: { name: string }) {
-  return db.users.create(data)
+export default {
+  userHandler: {
+    async getUser(id: string) {
+      return db.users.find(id)
+    },
+    async createUser(data: { name: string }) {
+      return db.users.create(data)
+    },
+  },
 }
 ```
 
 ```ts
 // Client (any page or component)
-import { userHandler } from 'vike-api-router/handlers'
+import handlers from 'vike-api-router/handlers'
 
-const user = await userHandler.getUser('123')
-const users = await userHandler.listUsers()
+const user = await handlers.userHandler.getUser('123')
 ```
 
-To get TypeScript types for handler functions, add a declaration file to your project root:
-
-```ts
-// handlers.d.ts
-import type * as _userHandler from './server/handlers/userHandler'
-
-declare module 'vike-api-router/handlers' {
-  export const userHandler: typeof _userHandler
-}
-```
+TypeScript types are automatically generated into `handlers.d.ts` at your project root when the Vite dev server starts. No manual declaration file needed.
 
 ---
 

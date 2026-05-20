@@ -38,7 +38,7 @@ describe('scanServerDir', () => {
       'api/(auth)/sign-in/+post.ts': 'export default () => ({ ok: true })',
       'routes/robots.txt/+get.ts': 'export default () => new Response("")',
       'routes/(meta)/sitemap.xml/+get.ts': 'export default () => new Response("")',
-      'handlers/userHandler.ts': 'export async function getUser(id) { return {} }',
+      'handlers/index.ts': 'export default { userHandler: { getUser: async (id) => ({}) } }',
     })
   })
 
@@ -62,10 +62,10 @@ describe('scanServerDir', () => {
     expect(paths).toContain('/sitemap.xml')
   })
 
-  it('scans handlers/ as RPC entries', () => {
+  it('scans handlers/index.ts as handler entry', () => {
     const manifest = scanServerDir(tmpDir, '/api')
-    expect(manifest.handlers).toHaveLength(1)
-    expect(manifest.handlers[0].name).toBe('userHandler')
+    expect(manifest.handlers).not.toBeNull()
+    expect(manifest.handlers!.moduleId).toContain('handlers/index.ts')
   })
 
   it('attaches correct global middleware to /api route', () => {
@@ -123,7 +123,7 @@ describe('scanServerDir', () => {
       const manifest = scanServerDir(empty, '/api')
       expect(manifest.apiRoutes).toHaveLength(0)
       expect(manifest.customRoutes).toHaveLength(0)
-      expect(manifest.handlers).toHaveLength(0)
+      expect(manifest.handlers).toBeNull()
     } finally {
       fs.rmSync(empty, { recursive: true, force: true })
     }
