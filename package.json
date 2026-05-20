@@ -4,6 +4,15 @@
   "description": "File-based API routing for Vike — supports Hono, h3, and more",
   "type": "module",
   "license": "MIT",
+  "author": "vad1ym",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vad1ym/vike-api-routing.git"
+  },
+  "homepage": "https://github.com/vad1ym/vike-api-routing#readme",
+  "bugs": {
+    "url": "https://github.com/vad1ym/vike-api-routing/issues"
+  },
   "keywords": [
     "vike",
     "api",
@@ -46,6 +55,7 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "changelog": "changelogen",
+    "changelog:dry": "changelogen --no-output",
     "release": "changelogen --release",
     "example:hono": "pnpm run build && pnpm --filter example-vike-api-router-hono dev",
     "example:hono:build": "pnpm run build && pnpm --filter example-vike-api-router-hono build"
@@ -61,12 +71,22 @@
     "vitest": "^4.1.6"
   },
   "peerDependencies": {
+    "@universal-middleware/core": ">=0.4.0",
     "vike": ">=0.4.259",
     "vite": ">=5.0.0"
   },
   "peerDependenciesMeta": {
+    "@universal-middleware/core": {
+      "optional": true
+    },
     "vike": {
       "optional": true
+    }
+  },
+  "changelog": {
+    "output": false,
+    "types": {
+      "chore": false
     }
   },
   "packageManager": "pnpm@10.11.0"
