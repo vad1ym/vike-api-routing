@@ -36,10 +36,6 @@
       "types": "./lib/client.ts",
       "default": "./dist/client.js"
     },
-    "./config": {
-      "types": "./lib/config.ts",
-      "default": "./dist/config.js"
-    },
     "./handlers": {
       "types": "./lib/handlers.ts",
       "default": "./dist/handlers.js"

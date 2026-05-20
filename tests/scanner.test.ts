@@ -26,19 +26,19 @@ afterAll(() => {
 describe('scanServerDir', () => {
   beforeAll(() => {
     tmpDir = createTmpServer({
-      'api/+get.ts': 'export default () => ({})',
-      'api/+middleware.ts': 'export default async (req, next) => next()',
-      'api/users/+get.ts': 'export default () => ({})',
-      'api/users/+post.ts': 'export default () => ({})',
-      'api/users/+middleware.ts': 'export default async (req, next) => next()',
-      'api/users/@id/+get.ts': 'export default () => ({})',
-      'api/users/@id/+delete.ts': 'export default () => null',
-      'api/health/+all.ts': 'export default () => ({})',
-      'api/(auth)/+middleware.ts': 'export default async (req, next) => next()',
-      'api/(auth)/sign-in/+post.ts': 'export default () => ({ ok: true })',
-      'routes/robots.txt/+get.ts': 'export default () => new Response("")',
-      'routes/(meta)/sitemap.xml/+get.ts': 'export default () => new Response("")',
-      'handlers/index.ts': 'export default { userHandler: { getUser: async (id) => ({}) } }',
+      'api/get.ts': 'export default () => ({})',
+      'api/middleware.ts': 'export default async (req, next) => next()',
+      'api/users/get.ts': 'export default () => ({})',
+      'api/users/post.ts': 'export default () => ({})',
+      'api/users/middleware.ts': 'export default async (req, next) => next()',
+      'api/users/@id/get.ts': 'export default () => ({})',
+      'api/users/@id/delete.ts': 'export default () => null',
+      'api/health/all.ts': 'export default () => ({})',
+      'api/(auth)/middleware.ts': 'export default async (req, next) => next()',
+      'api/(auth)/sign-in/post.ts': 'export default () => ({ ok: true })',
+      'routes/robots.txt/get.ts': 'export default () => new Response("")',
+      'routes/(meta)/sitemap.xml/get.ts': 'export default () => new Response("")',
+      'handlers.ts': 'export default { userHandler: { getUser: async (id) => ({}) } }',
     })
   })
 
@@ -62,10 +62,10 @@ describe('scanServerDir', () => {
     expect(paths).toContain('/sitemap.xml')
   })
 
-  it('scans handlers/index.ts as handler entry', () => {
+  it('scans handlers.ts as handler entry', () => {
     const manifest = scanServerDir(tmpDir, '/api')
     expect(manifest.handlers).not.toBeNull()
-    expect(manifest.handlers!.moduleId).toContain('handlers/index.ts')
+    expect(manifest.handlers!.moduleId).toContain('handlers.ts')
     expect(manifest.handlers!.names).toContain('userHandler')
   })
 
@@ -73,15 +73,15 @@ describe('scanServerDir', () => {
     const manifest = scanServerDir(tmpDir, '/api')
     const root = manifest.apiRoutes.find(r => r.path === '/api' && r.method === 'GET')
     expect(root).toBeDefined()
-    // Global api/+middleware.ts should be in the chain
-    expect(root!.middlewares.some(m => m.includes('+middleware.ts'))).toBe(true)
+    // Global api/middleware.ts should be in the chain
+    expect(root!.middlewares.some(m => m.includes('middleware.ts'))).toBe(true)
   })
 
   it('attaches cumulative middlewares for nested routes', () => {
     const manifest = scanServerDir(tmpDir, '/api')
     const userById = manifest.apiRoutes.find(r => r.path === '/api/users/:id' && r.method === 'GET')
     expect(userById).toBeDefined()
-    // Should have both api/+middleware.ts and api/users/+middleware.ts
+    // Should have both api/middleware.ts and api/users/middleware.ts
     expect(userById!.middlewares).toHaveLength(2)
   })
 
@@ -89,7 +89,7 @@ describe('scanServerDir', () => {
     const manifest = scanServerDir(tmpDir, '/api')
     const health = manifest.apiRoutes.find(r => r.path === '/api/health')
     expect(health).toBeDefined()
-    // api/+middleware.ts exists, so health should have 1 middleware
+    // api/middleware.ts exists, so health should have 1 middleware
     expect(health!.middlewares).toHaveLength(1)
   })
 
@@ -98,14 +98,14 @@ describe('scanServerDir', () => {
     const signIn = manifest.apiRoutes.find(r => r.path === '/api/sign-in' && r.method === 'POST')
     expect(signIn).toBeDefined()
     expect(signIn!.middlewares).toHaveLength(2)
-    expect(signIn!.middlewares.some(m => m.includes('api/(auth)/+middleware.ts'))).toBe(true)
+    expect(signIn!.middlewares.some(m => m.includes('api/(auth)/middleware.ts'))).toBe(true)
   })
 
   it('sorts routes: static before dynamic before wildcard', () => {
     const tmp2 = createTmpServer({
-      'api/users/+get.ts': '',
-      'api/@id/+get.ts': '',
-      'api/@...rest/+get.ts': '',
+      'api/users/get.ts': '',
+      'api/@id/get.ts': '',
+      'api/@...rest/get.ts': '',
     })
 
     try {
@@ -120,7 +120,7 @@ describe('scanServerDir', () => {
 
   it('extracts only top-level keys from export default — ignores nested object keys', () => {
     const tmp = createTmpServer({
-      'handlers/index.ts': `
+      'handlers.ts': `
 import { proxyHandler } from 'vike-api-router/proxy'
 export default {
   oladoctor: proxyHandler({
@@ -139,7 +139,7 @@ export default {
 
   it('extracts shorthand property keys from export default', () => {
     const tmp = createTmpServer({
-      'handlers/index.ts': `
+      'handlers.ts': `
 import { userHandler } from './userHandler'
 import { authHandler } from './authHandler'
 export default {
@@ -155,7 +155,7 @@ export default {
     }
   })
 
-  it('returns null handler when no handlers/index.ts exists', () => {
+  it('returns null handler when no handlers.ts exists', () => {
     const tmp = createTmpServer({
       'handlers/other.ts': 'export const x = 1',
     })

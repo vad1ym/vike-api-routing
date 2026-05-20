@@ -29,8 +29,8 @@ export function filePathToRoutePath(relativePath: string, prefix: string): strin
   // Normalize separators
   const normalized = relativePath.split(path.sep).join('/')
 
-  // Remove the +method.ts filename
-  const dir = normalized.replace(/\/?\+[a-z]+\.ts$/, '')
+  // Remove the method.ts filename
+  const dir = normalized.replace(/\/?[a-z]+\.ts$/, '')
 
   // Split into segments and convert each
   const segments = dir.split('/').filter(Boolean)
@@ -51,7 +51,7 @@ export function filePathToRoutePath(relativePath: string, prefix: string): strin
  * Returns uppercase method or 'ALL' for +all.ts.
  */
 export function fileNameToMethod(filename: string): string {
-  const base = path.basename(filename, '.ts').replace('+', '').toLowerCase()
+  const base = path.basename(filename, '.ts').toLowerCase()
   if (!METHOD_FILES.has(base)) throw new Error(`Unknown method file: ${filename}`)
   return base === 'all' ? 'ALL' : base.toUpperCase()
 }
@@ -96,7 +96,7 @@ export function getMiddlewareChainPaths(relativeDir: string): string[] {
   let current = ''
   for (const part of parts) {
     current = current ? `${current}/${part}` : part
-    chain.push(`${current}/+middleware.ts`)
+    chain.push(`${current}/middleware.ts`)
   }
 
   return chain

@@ -10,18 +10,18 @@ describe('generateHandlersDts', () => {
   })
 
   it('generates typed named exports for each handler name', () => {
-    const handler: HandlerEntry = { moduleId: '/project/server/handlers/index.ts', names: ['oladoctor', 'github'] }
+    const handler: HandlerEntry = { moduleId: '/project/server/handlers.ts', names: ['oladoctor', 'github'] }
     const result = generateHandlersDts(handler)
     expect(result).toContain(`export const oladoctor`)
     expect(result).toContain(`export const github`)
-    expect(result).toContain(`/project/server/handlers/index.ts`)
+    expect(result).toContain(`/project/server/handlers.ts`)
   })
 
   it('generates callable type for named route export', () => {
     const route: RouteEntry = {
       method: 'PUT',
       path: '/api/users/:id',
-      moduleId: '/project/server/api/users/@id/+put.ts',
+      moduleId: '/project/server/api/users/@id/put.ts',
       middlewares: [],
       namedExport: 'updateUser',
     }
@@ -36,7 +36,7 @@ describe('generateHandlersClientModule — named route exports', () => {
   const route: RouteEntry = {
     method: 'PUT',
     path: '/api/users/:id',
-    moduleId: '/project/server/api/users/@id/+put.ts',
+    moduleId: '/project/server/api/users/@id/put.ts',
     middlewares: [],
     namedExport: 'updateUser',
   }
@@ -50,7 +50,7 @@ describe('generateHandlersClientModule — named route exports', () => {
   })
 
   it('generates _rpc for regular handler entries', () => {
-    const handler: HandlerEntry = { moduleId: '/project/server/handlers/index.ts', names: ['oladoctor'] }
+    const handler: HandlerEntry = { moduleId: '/project/server/handlers.ts', names: ['oladoctor'] }
     const result = generateHandlersClientModule(handler, '/_rpc', [])
     expect(result).toContain(`_rpc("oladoctor"`)
     expect(result).not.toContain('_routeCall')
@@ -59,17 +59,17 @@ describe('generateHandlersClientModule — named route exports', () => {
   it('generates SSR direct call for named route export', () => {
     const result = generateHandlersClientModule(null, '/_rpc', [route])
     expect(result).toContain('import.meta.env.SSR')
-    expect(result).toContain('/project/server/api/users/@id/+put.ts')
+    expect(result).toContain('/project/server/api/users/@id/put.ts')
     expect(result).toContain('updateUser')
   })
 
   it('SSR path runs middleware chain for defineRoute', () => {
     const routeWithMw: RouteEntry = {
       ...route,
-      middlewares: ['/project/server/api/+middleware.ts'],
+      middlewares: ['/project/server/api/middleware.ts'],
     }
     const result = generateHandlersClientModule(null, '/_rpc', [routeWithMw])
-    expect(result).toContain('/project/server/api/+middleware.ts')
+    expect(result).toContain('/project/server/api/middleware.ts')
     expect(result).toContain('_mws')
     expect(result).toContain('_r.handler')
   })
@@ -85,7 +85,7 @@ describe('generateHandlersDts — defineProxyRoute', () => {
     const route: RouteEntry = {
       method: 'ALL',
       path: '/api/*',
-      moduleId: '/project/server/api/@...rest/+all.ts',
+      moduleId: '/project/server/api/@...rest/all.ts',
       middlewares: [],
       namedExport: 'proxy',
       proxyTarget: 'https://api.example.com',
@@ -93,7 +93,7 @@ describe('generateHandlersDts — defineProxyRoute', () => {
     const result = generateHandlersDts(null, [route])
     expect(result).toContain(`export const proxy`)
     expect(result).toContain(`ProxyHandlerClient`)
-    expect(result).not.toContain('/project/server/api/@...rest/+all.ts')
+    expect(result).not.toContain('/project/server/api/@...rest/all.ts')
   })
 })
 
@@ -101,7 +101,7 @@ describe('generateHandlersClientModule — defineProxyRoute', () => {
   const proxyRoute: RouteEntry = {
     method: 'ALL',
     path: '/api/*',
-    moduleId: '/project/server/api/@...rest/+all.ts',
+    moduleId: '/project/server/api/@...rest/all.ts',
     middlewares: [],
     namedExport: 'proxy',
     proxyTarget: 'https://api.example.com',
@@ -116,7 +116,7 @@ describe('generateHandlersClientModule — defineProxyRoute', () => {
   it('SSR path imports the route module and runs middleware chain', () => {
     const result = generateHandlersClientModule(null, '/_rpc', [proxyRoute])
     expect(result).toContain('import.meta.env.SSR')
-    expect(result).toContain('/project/server/api/@...rest/+all.ts')
+    expect(result).toContain('/project/server/api/@...rest/all.ts')
     expect(result).toContain('_r.handler')
     expect(result).toContain('_mws')
   })
@@ -125,13 +125,13 @@ describe('generateHandlersClientModule — defineProxyRoute', () => {
     const route: RouteEntry = {
       ...proxyRoute,
       middlewares: [
-        '/project/server/api/+middleware.ts',
-        '/project/server/api/@...rest/+middleware.ts',
+        '/project/server/api/middleware.ts',
+        '/project/server/api/@...rest/middleware.ts',
       ],
     }
     const result = generateHandlersClientModule(null, '/_rpc', [route])
-    expect(result).toContain('/project/server/api/+middleware.ts')
-    expect(result).toContain('/project/server/api/@...rest/+middleware.ts')
+    expect(result).toContain('/project/server/api/middleware.ts')
+    expect(result).toContain('/project/server/api/@...rest/middleware.ts')
   })
 
   it('SSR path has no middleware imports when no middlewares', () => {

@@ -15,22 +15,22 @@ Works with any server framework supported by [universal-middleware](https://gith
 server/
   api/          → HTTP endpoints with /api/ prefix
   routes/       → HTTP endpoints without prefix (robots.txt, sitemaps, etc.)
-  handlers/     → RPC handlers (index.ts), callable from client code directly
+  handlers.ts   → RPC handlers, callable from client code directly
 ```
 
 ### File naming
 
 | File | Route |
 |------|-------|
-| `server/api/+get.ts` | `GET /api` |
-| `server/api/users/+get.ts` | `GET /api/users` |
-| `server/api/users/+post.ts` | `POST /api/users` |
-| `server/api/users/+all.ts` | any method → `/api/users` |
-| `server/api/users/@id/+get.ts` | `GET /api/users/:id` |
-| `server/api/users/@id/+delete.ts` | `DELETE /api/users/:id` |
-| `server/api/files/@...rest/+get.ts` | `GET /api/files/*` |
-| `server/api/(auth)/sign-in/+post.ts` | `POST /api/sign-in` |
-| `server/routes/robots.txt/+get.ts` | `GET /robots.txt` |
+| `server/api/get.ts` | `GET /api` |
+| `server/api/users/get.ts` | `GET /api/users` |
+| `server/api/users/post.ts` | `POST /api/users` |
+| `server/api/users/all.ts` | any method → `/api/users` |
+| `server/api/users/@id/get.ts` | `GET /api/users/:id` |
+| `server/api/users/@id/delete.ts` | `DELETE /api/users/:id` |
+| `server/api/files/@...rest/get.ts` | `GET /api/files/*` |
+| `server/api/(auth)/sign-in/post.ts` | `POST /api/sign-in` |
+| `server/routes/robots.txt/get.ts` | `GET /robots.txt` |
 
 **Segment conventions:**
 - `@id` → `:id` (dynamic param)
@@ -38,14 +38,16 @@ server/
 - `(group)` → ignored in the URL path, useful for organization
 - Regular folder names → literal path segments
 
+> No `+` prefix needed — files are named directly (`get.ts`, `post.ts`, `middleware.ts`). This avoids conflicts with Vike's own `+` file conventions.
+
 ---
 
 ## Route Handlers
 
-Each `+get.ts`, `+post.ts`, etc. exports a default function:
+Each `get.ts`, `post.ts`, etc. exports a default function:
 
 ```ts
-// server/api/users/@id/+get.ts
+// server/api/users/@id/get.ts
 import type { ApiContext } from 'vike-api-router'
 
 export default async function({ params, req }: ApiContext<{ id: string }>) {
@@ -62,10 +64,10 @@ export default async function({ params, req }: ApiContext<{ id: string }>) {
 
 ## Middleware
 
-Create a `+middleware.ts` file in any directory. It applies **cumulatively** to all routes in that directory and all subdirectories.
+Create a `middleware.ts` file in any directory. It applies **cumulatively** to all routes in that directory and all subdirectories.
 
 ```ts
-// server/api/+middleware.ts — runs for ALL /api/* routes
+// server/api/middleware.ts — runs for ALL /api/* routes
 import type { MiddlewareFn } from 'vike-api-router'
 
 const middleware: MiddlewareFn = async (req, next) => {
@@ -77,7 +79,7 @@ export default middleware
 ```
 
 ```ts
-// server/api/users/+middleware.ts — runs only for /api/users/* (stacks on top)
+// server/api/users/middleware.ts — runs only for /api/users/* (stacks on top)
 import type { MiddlewareFn } from 'vike-api-router'
 
 const middleware: MiddlewareFn = async (req, next) => {
@@ -94,34 +96,27 @@ export default middleware
 ```
 
 Middleware chain for `GET /api/users/1`:
-1. `server/api/+middleware.ts`
-2. `server/api/users/+middleware.ts`
-3. `server/api/users/@id/+get.ts` (route handler)
+1. `server/api/middleware.ts`
+2. `server/api/users/middleware.ts`
+3. `server/api/users/@id/get.ts` (route handler)
 
 ---
 
 ## RPC Handlers
 
-Create `server/handlers/index.ts` and export a default object mapping handler names to objects with async methods.
+Create `server/handlers.ts` and export a default object mapping handler names to objects with async methods.
 
 ```ts
-// server/handlers/userHandler.ts
-export const userHandler = {
-  async getUser(id: string) {
-    return db.users.find(id)
-  },
-  async createUser(data: { name: string }) {
-    return db.users.create(data)
-  },
-}
-```
-
-```ts
-// server/handlers/index.ts
-import { userHandler } from './userHandler'
-
+// server/handlers.ts
 export default {
-  userHandler,
+  userHandler: {
+    async getUser(id: string) {
+      return db.users.find(id)
+    },
+    async createUser(data: { name: string }) {
+      return db.users.create(data)
+    },
+  },
 }
 ```
 
@@ -145,7 +140,7 @@ TypeScript types are automatically generated into `handlers.d.ts` at your projec
 Use `defineRoute` to declare a route that is also callable as a handler from client code.
 
 ```ts
-// server/api/users/@id/+put.ts
+// server/api/users/@id/put.ts
 import { defineRoute } from 'vike-api-router'
 import type { ApiContext } from 'vike-api-router'
 
@@ -182,7 +177,7 @@ Import from `vike-api-router/proxy`.
 Returns a `RouteHandler` that forwards all requests to an upstream target. Use as the default export of a `+all.ts` file.
 
 ```ts
-// server/api/github/@...path/+all.ts
+// server/api/github/@...path/all.ts
 import { proxyRoute } from 'vike-api-router/proxy'
 
 export default proxyRoute({
@@ -231,10 +226,10 @@ type ProxyRouteOptions = {
 
 ### `proxyHandler` — server-side HTTP client
 
-Returns a typed HTTP client for use inside `server/handlers/`. Handles JSON serialization, query params, and throws `ProxyError` on non-2xx responses.
+Returns a typed HTTP client for use inside server handler files. Handles JSON serialization, query params, and throws `ProxyError` on non-2xx responses.
 
 ```ts
-// server/handlers/github.ts
+// server/handlers.ts
 import { proxyHandler } from 'vike-api-router/proxy'
 
 const github = proxyHandler({
@@ -367,13 +362,13 @@ export default { fetch: toWebHandler(app) }
 
 | Feature | Status |
 |---------|--------|
-| `+get/post/put/patch/delete/head/options.ts` | ✅ |
-| `+all.ts` (any method) | ✅ |
-| `+middleware.ts` (cumulative) | ✅ |
+| `get/post/put/patch/delete/head/options.ts` | ✅ |
+| `all.ts` (any method) | ✅ |
+| `middleware.ts` (cumulative) | ✅ |
 | Dynamic segments `@id` | ✅ |
 | Wildcard segments `@...rest` | ✅ |
 | `server/routes/` (no prefix) | ✅ |
-| RPC handlers (`server/handlers/`) | ✅ |
+| RPC handlers (`server/handlers.ts`) | ✅ |
 | Client import (`vike-api-router/handlers`) | ✅ |
 | HMR (hot reload on file add/remove) | ✅ |
 | TypeScript | ✅ |

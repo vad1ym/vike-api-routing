@@ -9,7 +9,7 @@ export interface RouteEntry {
   path: string
   /** Absolute path to the route module file */
   moduleId: string
-  /** Ordered list of absolute paths to +middleware.ts files (root → leaf) */
+  /** Ordered list of absolute paths to middleware.ts files (root → leaf) */
   middlewares: string[]
   /**
    * If the route file exports a named defineRoute() const, this is the export name.
@@ -24,7 +24,7 @@ export interface RouteEntry {
 }
 
 export interface HandlerEntry {
-  /** Absolute path to server/handlers/index.ts */
+  /** Absolute path to server/handlers.ts */
   moduleId: string
   /** Handler names extracted from the default export object keys */
   names: string[]
@@ -37,7 +37,7 @@ export interface RouteManifest {
 }
 
 const SKIPPED_DIRS = new Set(['.git', '.vite', 'dist', 'node_modules'])
-const METHOD_FILE_RE = /^\+(?:get|post|put|patch|delete|head|options|all)\.ts$/
+const METHOD_FILE_RE = /^(?:get|post|put|patch|delete|head|options|all)\.ts$/
 
 function extractNamedRouteExport(filePath: string): { name: string; proxyTarget?: string } | undefined {
   const src = fs.readFileSync(filePath, 'utf-8')
@@ -125,9 +125,9 @@ function extractHandlerNames(filePath: string): string[] {
 }
 
 function scanHandlersDir(serverDir: string): HandlerEntry | null {
-  const indexPath = path.join(serverDir, 'handlers', 'index.ts')
-  if (!fs.existsSync(indexPath)) return null
-  return { moduleId: indexPath, names: extractHandlerNames(indexPath) }
+  const handlersPath = path.join(serverDir, 'handlers.ts')
+  if (!fs.existsSync(handlersPath)) return null
+  return { moduleId: handlersPath, names: extractHandlerNames(handlersPath) }
 }
 
 export function scanServerDir(serverDir: string, apiPrefix: string): RouteManifest {

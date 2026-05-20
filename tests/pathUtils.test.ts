@@ -23,57 +23,57 @@ describe('segmentToHono', () => {
 
 describe('filePathToRoutePath', () => {
   it('converts simple file to route', () => {
-    expect(filePathToRoutePath('+get.ts', '/api')).toBe('/api')
+    expect(filePathToRoutePath('get.ts', '/api')).toBe('/api')
   })
 
   it('converts nested file to route', () => {
-    expect(filePathToRoutePath('users/+get.ts', '/api')).toBe('/api/users')
+    expect(filePathToRoutePath('users/get.ts', '/api')).toBe('/api/users')
   })
 
   it('converts dynamic segment', () => {
-    expect(filePathToRoutePath('users/@id/+get.ts', '/api')).toBe('/api/users/:id')
+    expect(filePathToRoutePath('users/@id/get.ts', '/api')).toBe('/api/users/:id')
   })
 
   it('converts wildcard segment', () => {
-    expect(filePathToRoutePath('files/@...rest/+get.ts', '/api')).toBe('/api/files/*')
+    expect(filePathToRoutePath('files/@...rest/get.ts', '/api')).toBe('/api/files/*')
   })
 
   it('works without prefix (routes/)', () => {
-    expect(filePathToRoutePath('robots.txt/+get.ts', '')).toBe('/robots.txt')
+    expect(filePathToRoutePath('robots.txt/get.ts', '')).toBe('/robots.txt')
   })
 
   it('deeply nested route', () => {
-    expect(filePathToRoutePath('users/@id/posts/@postId/+get.ts', '/api')).toBe('/api/users/:id/posts/:postId')
+    expect(filePathToRoutePath('users/@id/posts/@postId/get.ts', '/api')).toBe('/api/users/:id/posts/:postId')
   })
 
   it('ignores route groups when building API routes', () => {
-    expect(filePathToRoutePath('(auth)/sign-in/+post.ts', '/api')).toBe('/api/sign-in')
+    expect(filePathToRoutePath('(auth)/sign-in/post.ts', '/api')).toBe('/api/sign-in')
   })
 
   it('ignores route groups when building custom routes', () => {
-    expect(filePathToRoutePath('(meta)/robots.txt/+get.ts', '')).toBe('/robots.txt')
+    expect(filePathToRoutePath('(meta)/robots.txt/get.ts', '')).toBe('/robots.txt')
   })
 })
 
 describe('fileNameToMethod', () => {
-  it('converts +get.ts to GET', () => {
-    expect(fileNameToMethod('+get.ts')).toBe('GET')
+  it('converts get.ts to GET', () => {
+    expect(fileNameToMethod('get.ts')).toBe('GET')
   })
 
-  it('converts +post.ts to POST', () => {
-    expect(fileNameToMethod('+post.ts')).toBe('POST')
+  it('converts post.ts to POST', () => {
+    expect(fileNameToMethod('post.ts')).toBe('POST')
   })
 
-  it('converts +all.ts to ALL', () => {
-    expect(fileNameToMethod('+all.ts')).toBe('ALL')
+  it('converts all.ts to ALL', () => {
+    expect(fileNameToMethod('all.ts')).toBe('ALL')
   })
 
-  it('converts +delete.ts to DELETE', () => {
-    expect(fileNameToMethod('+delete.ts')).toBe('DELETE')
+  it('converts delete.ts to DELETE', () => {
+    expect(fileNameToMethod('delete.ts')).toBe('DELETE')
   })
 
   it('throws on unknown filename', () => {
-    expect(() => fileNameToMethod('+unknown.ts')).toThrow()
+    expect(() => fileNameToMethod('unknown.ts')).toThrow()
   })
 })
 
@@ -116,14 +116,14 @@ describe('getMiddlewareChainPaths', () => {
   it('returns chain from root to leaf', () => {
     const chain = getMiddlewareChainPaths('api/users/@id')
     expect(chain).toEqual([
-      'api/+middleware.ts',
-      'api/users/+middleware.ts',
-      'api/users/@id/+middleware.ts',
+      'api/middleware.ts',
+      'api/users/middleware.ts',
+      'api/users/@id/middleware.ts',
     ])
   })
 
   it('returns single entry for top-level dir', () => {
     const chain = getMiddlewareChainPaths('api')
-    expect(chain).toEqual(['api/+middleware.ts'])
+    expect(chain).toEqual(['api/middleware.ts'])
   })
 })
