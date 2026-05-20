@@ -118,7 +118,7 @@ export function generateHandlersClientModule(
   lines.push('}')
   lines.push('')
 
-  if (namedRoutes.length > 0) {
+  if (namedRoutes.some(r => !r.proxyTarget)) {
     lines.push('function _routeCall(method, routePath) {')
     lines.push('  return async (ctx = {}) => {')
     lines.push('    let url = routePath')
@@ -165,21 +165,70 @@ export function generateHandlersClientModule(
   for (const route of namedRoutes) {
     const name = route.namedExport!
     if (route.proxyTarget) {
-      // defineProxyRoute — SSR calls upstream directly via proxyHandler, browser uses RPC-style proxy
-      const v = 'vike-api-router/proxy'
-      lines.push(`const _proxy_${name} = import.meta.env.SSR`)
-      lines.push(`  ? (await import('${v}')).proxyHandler({ target: ${JSON.stringify(route.proxyTarget)} })`)
-      lines.push(`  : null`)
+      // defineProxyRoute — SSR runs the route handler through its middleware chain, browser uses RPC-style proxy
+      const middlewareImports = route.middlewares.map((mw, i) => `(await import(${JSON.stringify(mw)})).default`)
+      const middlewaresExpr = `[${middlewareImports.join(', ')}]`
       lines.push(`export const ${name} = import.meta.env.SSR`)
-      lines.push(`  ? _proxy_${name}`)
+      lines.push(`  ? await (async () => {`)
+      lines.push(`      const { ${name}: _r } = await import(${JSON.stringify(route.moduleId)})`)
+      lines.push(`      const _mws = ${middlewaresExpr}`)
+      lines.push(`      async function _call(method, path, opts = {}) {`)
+      lines.push(`        const url = new URL(path, 'http://localhost')`)
+      lines.push(`        if (opts.query) for (const [k, v] of Object.entries(opts.query)) if (v != null) url.searchParams.set(k, String(v))`)
+      lines.push(`        const hasBody = method !== 'GET' && method !== 'HEAD'`)
+      lines.push(`        const req = new Request(url.href, {`)
+      lines.push(`          method,`)
+      lines.push(`          headers: opts.headers ? new Headers(opts.headers) : undefined,`)
+      lines.push(`          body: hasBody && opts.body !== undefined ? JSON.stringify(opts.body) : undefined,`)
+      lines.push(`          signal: opts.signal,`)
+      lines.push(`        })`)
+      lines.push(`        const ctx = { params: {}, req, method }`)
+      lines.push(`        let chain = () => Promise.resolve(_r.handler(ctx))`)
+      lines.push(`        for (let _i = _mws.length - 1; _i >= 0; _i--) {`)
+      lines.push(`          const mw = _mws[_i], next = chain`)
+      lines.push(`          chain = () => mw(req, next)`)
+      lines.push(`        }`)
+      lines.push(`        const res = await chain()`)
+      lines.push(`        if (res instanceof Response) {`)
+      lines.push(`          if (res.status === 204) return undefined`)
+      lines.push(`          const ct = res.headers.get('content-type') ?? ''`)
+      lines.push(`          return ct.includes('application/json') ? res.json() : res.text()`)
+      lines.push(`        }`)
+      lines.push(`        return res`)
+      lines.push(`      }`)
+      lines.push(`      return {`)
+      lines.push(`        get: (p, o) => _call('GET', p, o),`)
+      lines.push(`        post: (p, o) => _call('POST', p, o),`)
+      lines.push(`        put: (p, o) => _call('PUT', p, o),`)
+      lines.push(`        patch: (p, o) => _call('PATCH', p, o),`)
+      lines.push(`        delete: (p, o) => _call('DELETE', p, o),`)
+      lines.push(`        request: (m, p, o) => _call(m, p, o),`)
+      lines.push(`      }`)
+      lines.push(`    })()`)
       lines.push(`  : new Proxy({}, {`)
       lines.push(`      get(_, fnName) { return typeof fnName === 'string' ? _rpc(${JSON.stringify(name)}, fnName) : undefined },`)
       lines.push(`    })`)
     } else {
+      const middlewareImports = route.middlewares.map(mw => `(await import(${JSON.stringify(mw)})).default`)
+      const middlewaresExpr = `[${middlewareImports.join(', ')}]`
       lines.push(`export const ${name} = import.meta.env.SSR`)
       lines.push(`  ? async (ctx = {}) => {`)
       lines.push(`      const { ${name}: _r } = await import(${JSON.stringify(route.moduleId)})`)
-      lines.push(`      return _r.handler({ params: ctx.params ?? {}, req: new Request('http://localhost'), method: ${JSON.stringify(route.method)} })`)
+      lines.push(`      const _mws = ${middlewaresExpr}`)
+      lines.push(`      const req = new Request('http://localhost', { method: ${JSON.stringify(route.method)} })`)
+      lines.push(`      const apiCtx = { params: ctx.params ?? {}, req, method: ${JSON.stringify(route.method)} }`)
+      lines.push(`      let chain = () => Promise.resolve(_r.handler(apiCtx))`)
+      lines.push(`      for (let _i = _mws.length - 1; _i >= 0; _i--) {`)
+      lines.push(`        const mw = _mws[_i], next = chain`)
+      lines.push(`        chain = () => mw(req, next)`)
+      lines.push(`      }`)
+      lines.push(`      const res = await chain()`)
+      lines.push(`      if (res instanceof Response) {`)
+      lines.push(`        if (res.status === 204) return undefined`)
+      lines.push(`        const ct = res.headers.get('content-type') ?? ''`)
+      lines.push(`        return ct.includes('application/json') ? res.json() : res.text()`)
+      lines.push(`      }`)
+      lines.push(`      return res`)
       lines.push(`    }`)
       lines.push(`  : _routeCall(${JSON.stringify(route.method)}, ${JSON.stringify(route.path)})`)
     }
@@ -210,7 +259,7 @@ export function generateHandlersDts(handler: HandlerEntry | null, routeHandlers:
     if (route.proxyTarget) {
       lines.push(`  export const ${route.namedExport}: import('vike-api-router/proxy').ProxyHandlerClient`)
     } else {
-      lines.push(`  export const ${route.namedExport}: typeof import(${JSON.stringify(route.moduleId)})[${JSON.stringify(route.namedExport)}]`)
+      lines.push(`  export const ${route.namedExport}: (ctx?: { params?: Record<string, string>; body?: unknown; query?: Record<string, unknown> }) => Promise<unknown>`)
     }
   }
 
